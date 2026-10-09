@@ -23,6 +23,12 @@ class Bets extends Table {
   /// Valor efetivamente recebido em caso de cashout (em centavos).
   IntColumn get cashoutCents => integer().nullable()();
 
+  /// Ajuste manual do valor total recebido numa aposta ganha, para quando
+  /// o arredondamento da odd divulgada pela casa de apostas gera um valor
+  /// de centavos diferente do calculado (stake × odd). Nulo = usa o valor
+  /// calculado normalmente; só é lido quando o status é [BetStatus.won].
+  IntColumn get actualReturnCents => integer().nullable()();
+
   /// Resultado financeiro realizado (lucro/prejuízo) em centavos.
   /// Nulo enquanto a aposta estiver em aberto.
   IntColumn get resultCents => integer().nullable()();

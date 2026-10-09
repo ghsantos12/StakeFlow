@@ -985,6 +985,17 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _actualReturnCentsMeta = const VerificationMeta(
+    'actualReturnCents',
+  );
+  @override
+  late final GeneratedColumn<int> actualReturnCents = GeneratedColumn<int>(
+    'actual_return_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _resultCentsMeta = const VerificationMeta(
     'resultCents',
   );
@@ -1050,6 +1061,7 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
     oddsScaled,
     status,
     cashoutCents,
+    actualReturnCents,
     resultCents,
     notes,
     betType,
@@ -1150,6 +1162,15 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
         ),
       );
     }
+    if (data.containsKey('actual_return_cents')) {
+      context.handle(
+        _actualReturnCentsMeta,
+        actualReturnCents.isAcceptableOrUnknown(
+          data['actual_return_cents']!,
+          _actualReturnCentsMeta,
+        ),
+      );
+    }
     if (data.containsKey('result_cents')) {
       context.handle(
         _resultCentsMeta,
@@ -1240,6 +1261,10 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
         DriftSqlType.int,
         data['${effectivePrefix}cashout_cents'],
       ),
+      actualReturnCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}actual_return_cents'],
+      ),
       resultCents: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}result_cents'],
@@ -1294,6 +1319,12 @@ class BetRow extends DataClass implements Insertable<BetRow> {
   /// Valor efetivamente recebido em caso de cashout (em centavos).
   final int? cashoutCents;
 
+  /// Ajuste manual do valor total recebido numa aposta ganha, para quando
+  /// o arredondamento da odd divulgada pela casa de apostas gera um valor
+  /// de centavos diferente do calculado (stake × odd). Nulo = usa o valor
+  /// calculado normalmente; só é lido quando o status é [BetStatus.won].
+  final int? actualReturnCents;
+
   /// Resultado financeiro realizado (lucro/prejuízo) em centavos.
   /// Nulo enquanto a aposta estiver em aberto.
   final int? resultCents;
@@ -1320,6 +1351,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     required this.oddsScaled,
     required this.status,
     this.cashoutCents,
+    this.actualReturnCents,
     this.resultCents,
     this.notes,
     this.betType,
@@ -1348,6 +1380,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     }
     if (!nullToAbsent || cashoutCents != null) {
       map['cashout_cents'] = Variable<int>(cashoutCents);
+    }
+    if (!nullToAbsent || actualReturnCents != null) {
+      map['actual_return_cents'] = Variable<int>(actualReturnCents);
     }
     if (!nullToAbsent || resultCents != null) {
       map['result_cents'] = Variable<int>(resultCents);
@@ -1383,6 +1418,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
       cashoutCents: cashoutCents == null && nullToAbsent
           ? const Value.absent()
           : Value(cashoutCents),
+      actualReturnCents: actualReturnCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actualReturnCents),
       resultCents: resultCents == null && nullToAbsent
           ? const Value.absent()
           : Value(resultCents),
@@ -1417,6 +1455,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
         serializer.fromJson<String>(json['status']),
       ),
       cashoutCents: serializer.fromJson<int?>(json['cashoutCents']),
+      actualReturnCents: serializer.fromJson<int?>(json['actualReturnCents']),
       resultCents: serializer.fromJson<int?>(json['resultCents']),
       notes: serializer.fromJson<String?>(json['notes']),
       betType: $BetsTable.$converterbetTypen.fromJson(
@@ -1444,6 +1483,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
         $BetsTable.$converterstatus.toJson(status),
       ),
       'cashoutCents': serializer.toJson<int?>(cashoutCents),
+      'actualReturnCents': serializer.toJson<int?>(actualReturnCents),
       'resultCents': serializer.toJson<int?>(resultCents),
       'notes': serializer.toJson<String?>(notes),
       'betType': serializer.toJson<String?>(
@@ -1467,6 +1507,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     int? oddsScaled,
     BetStatus? status,
     Value<int?> cashoutCents = const Value.absent(),
+    Value<int?> actualReturnCents = const Value.absent(),
     Value<int?> resultCents = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<BetType?> betType = const Value.absent(),
@@ -1485,6 +1526,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     oddsScaled: oddsScaled ?? this.oddsScaled,
     status: status ?? this.status,
     cashoutCents: cashoutCents.present ? cashoutCents.value : this.cashoutCents,
+    actualReturnCents: actualReturnCents.present
+        ? actualReturnCents.value
+        : this.actualReturnCents,
     resultCents: resultCents.present ? resultCents.value : this.resultCents,
     notes: notes.present ? notes.value : this.notes,
     betType: betType.present ? betType.value : this.betType,
@@ -1511,6 +1555,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
       cashoutCents: data.cashoutCents.present
           ? data.cashoutCents.value
           : this.cashoutCents,
+      actualReturnCents: data.actualReturnCents.present
+          ? data.actualReturnCents.value
+          : this.actualReturnCents,
       resultCents: data.resultCents.present
           ? data.resultCents.value
           : this.resultCents,
@@ -1536,6 +1583,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
           ..write('oddsScaled: $oddsScaled, ')
           ..write('status: $status, ')
           ..write('cashoutCents: $cashoutCents, ')
+          ..write('actualReturnCents: $actualReturnCents, ')
           ..write('resultCents: $resultCents, ')
           ..write('notes: $notes, ')
           ..write('betType: $betType, ')
@@ -1559,6 +1607,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     oddsScaled,
     status,
     cashoutCents,
+    actualReturnCents,
     resultCents,
     notes,
     betType,
@@ -1581,6 +1630,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
           other.oddsScaled == this.oddsScaled &&
           other.status == this.status &&
           other.cashoutCents == this.cashoutCents &&
+          other.actualReturnCents == this.actualReturnCents &&
           other.resultCents == this.resultCents &&
           other.notes == this.notes &&
           other.betType == this.betType &&
@@ -1601,6 +1651,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
   final Value<int> oddsScaled;
   final Value<BetStatus> status;
   final Value<int?> cashoutCents;
+  final Value<int?> actualReturnCents;
   final Value<int?> resultCents;
   final Value<String?> notes;
   final Value<BetType?> betType;
@@ -1619,6 +1670,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     this.oddsScaled = const Value.absent(),
     this.status = const Value.absent(),
     this.cashoutCents = const Value.absent(),
+    this.actualReturnCents = const Value.absent(),
     this.resultCents = const Value.absent(),
     this.notes = const Value.absent(),
     this.betType = const Value.absent(),
@@ -1638,6 +1690,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     required int oddsScaled,
     required BetStatus status,
     this.cashoutCents = const Value.absent(),
+    this.actualReturnCents = const Value.absent(),
     this.resultCents = const Value.absent(),
     this.notes = const Value.absent(),
     this.betType = const Value.absent(),
@@ -1667,6 +1720,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     Expression<int>? oddsScaled,
     Expression<String>? status,
     Expression<int>? cashoutCents,
+    Expression<int>? actualReturnCents,
     Expression<int>? resultCents,
     Expression<String>? notes,
     Expression<String>? betType,
@@ -1686,6 +1740,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
       if (oddsScaled != null) 'odds_scaled': oddsScaled,
       if (status != null) 'status': status,
       if (cashoutCents != null) 'cashout_cents': cashoutCents,
+      if (actualReturnCents != null) 'actual_return_cents': actualReturnCents,
       if (resultCents != null) 'result_cents': resultCents,
       if (notes != null) 'notes': notes,
       if (betType != null) 'bet_type': betType,
@@ -1707,6 +1762,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     Value<int>? oddsScaled,
     Value<BetStatus>? status,
     Value<int?>? cashoutCents,
+    Value<int?>? actualReturnCents,
     Value<int?>? resultCents,
     Value<String?>? notes,
     Value<BetType?>? betType,
@@ -1726,6 +1782,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
       oddsScaled: oddsScaled ?? this.oddsScaled,
       status: status ?? this.status,
       cashoutCents: cashoutCents ?? this.cashoutCents,
+      actualReturnCents: actualReturnCents ?? this.actualReturnCents,
       resultCents: resultCents ?? this.resultCents,
       notes: notes ?? this.notes,
       betType: betType ?? this.betType,
@@ -1775,6 +1832,9 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     if (cashoutCents.present) {
       map['cashout_cents'] = Variable<int>(cashoutCents.value);
     }
+    if (actualReturnCents.present) {
+      map['actual_return_cents'] = Variable<int>(actualReturnCents.value);
+    }
     if (resultCents.present) {
       map['result_cents'] = Variable<int>(resultCents.value);
     }
@@ -1810,6 +1870,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
           ..write('oddsScaled: $oddsScaled, ')
           ..write('status: $status, ')
           ..write('cashoutCents: $cashoutCents, ')
+          ..write('actualReturnCents: $actualReturnCents, ')
           ..write('resultCents: $resultCents, ')
           ..write('notes: $notes, ')
           ..write('betType: $betType, ')
@@ -10396,6 +10457,7 @@ typedef $$BetsTableCreateCompanionBuilder = BetsCompanion Function({
   required int oddsScaled,
   required BetStatus status,
   Value<int?> cashoutCents,
+  Value<int?> actualReturnCents,
   Value<int?> resultCents,
   Value<String?> notes,
   Value<BetType?> betType,
@@ -10415,6 +10477,7 @@ typedef $$BetsTableUpdateCompanionBuilder = BetsCompanion Function({
   Value<int> oddsScaled,
   Value<BetStatus> status,
   Value<int?> cashoutCents,
+  Value<int?> actualReturnCents,
   Value<int?> resultCents,
   Value<String?> notes,
   Value<BetType?> betType,
@@ -10542,6 +10605,11 @@ class $$BetsTableFilterComposer extends Composer<_$AppDatabase, $BetsTable> {
 
   ColumnFilters<int> get cashoutCents => $composableBuilder(
     column: $table.cashoutCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get actualReturnCents => $composableBuilder(
+    column: $table.actualReturnCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10708,6 +10776,11 @@ class $$BetsTableOrderingComposer extends Composer<_$AppDatabase, $BetsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get actualReturnCents => $composableBuilder(
+    column: $table.actualReturnCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get resultCents => $composableBuilder(
     column: $table.resultCents,
     builder: (column) => ColumnOrderings(column),
@@ -10802,6 +10875,11 @@ class $$BetsTableAnnotationComposer
 
   GeneratedColumn<int> get cashoutCents => $composableBuilder(
     column: $table.cashoutCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get actualReturnCents => $composableBuilder(
+    column: $table.actualReturnCents,
     builder: (column) => column,
   );
 
@@ -10940,6 +11018,7 @@ class $$BetsTableTableManager
                 Value<int> oddsScaled = const Value.absent(),
                 Value<BetStatus> status = const Value.absent(),
                 Value<int?> cashoutCents = const Value.absent(),
+                Value<int?> actualReturnCents = const Value.absent(),
                 Value<int?> resultCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<BetType?> betType = const Value.absent(),
@@ -10958,6 +11037,7 @@ class $$BetsTableTableManager
                 oddsScaled: oddsScaled,
                 status: status,
                 cashoutCents: cashoutCents,
+                actualReturnCents: actualReturnCents,
                 resultCents: resultCents,
                 notes: notes,
                 betType: betType,
@@ -10978,6 +11058,7 @@ class $$BetsTableTableManager
                 required int oddsScaled,
                 required BetStatus status,
                 Value<int?> cashoutCents = const Value.absent(),
+                Value<int?> actualReturnCents = const Value.absent(),
                 Value<int?> resultCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<BetType?> betType = const Value.absent(),
@@ -10996,6 +11077,7 @@ class $$BetsTableTableManager
                 oddsScaled: oddsScaled,
                 status: status,
                 cashoutCents: cashoutCents,
+                actualReturnCents: actualReturnCents,
                 resultCents: resultCents,
                 notes: notes,
                 betType: betType,

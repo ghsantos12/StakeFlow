@@ -84,6 +84,7 @@ class BetService {
     String? notes,
     BetType betType = BetType.single,
     List<BetLegInput> legs = const [],
+    int? actualReturnCents,
   }) {
     return _saveBet(
       betId: betId,
@@ -101,6 +102,7 @@ class BetService {
       notes: notes,
       betType: betType,
       legs: legs,
+      actualReturnCents: actualReturnCents,
     );
   }
 
@@ -111,6 +113,7 @@ class BetService {
     required BetStatus status,
     required DateTime settledAt,
     int? cashoutCents,
+    int? actualReturnCents,
   }) async {
     final bet = await _db.betsDao.getById(betId);
     if (bet == null) throw ValidationException('Aposta não encontrada.');
@@ -130,6 +133,7 @@ class BetService {
       notes: bet.notes,
       betType: typeOf(bet),
       legs: await _legInputsOf(bet),
+      actualReturnCents: actualReturnCents,
     );
   }
 
@@ -189,6 +193,7 @@ class BetService {
     String? notes,
     BetType betType = BetType.single,
     List<BetLegInput> legs = const [],
+    int? actualReturnCents,
   }) async {
     _validateStakeOdds(stakeCents, oddsScaled);
     if (event.trim().isEmpty) throw ValidationException('Informe o evento/partida.');
@@ -198,6 +203,9 @@ class BetService {
     }
     if (status == BetStatus.cashedOut && (cashoutCents == null || cashoutCents < 0)) {
       throw ValidationException('Informe o valor recebido no cashout.');
+    }
+    if (actualReturnCents != null && actualReturnCents < 0) {
+      throw ValidationException('O valor recebido ajustado não pode ser negativo.');
     }
     if (betType == BetType.multiple) {
       if (legs.length < 2) {
@@ -227,7 +235,7 @@ class BetService {
       int? creditAmount;
       int? resultCents;
       if (status != BetStatus.open) {
-        creditAmount = _creditAmountFor(status, stakeCents, oddsScaled, cashoutCents);
+        creditAmount = _creditAmountFor(status, stakeCents, oddsScaled, cashoutCents, actualReturnCents);
         resultCents = _resultFor(status, stakeCents, creditAmount);
       }
 
@@ -248,6 +256,7 @@ class BetService {
           resultCents: Value(resultCents),
           notes: Value(notes),
           betType: Value(betType),
+          actualReturnCents: Value(status == BetStatus.won ? actualReturnCents : null),
           createdAt: now,
           updatedAt: now,
         ));
@@ -270,6 +279,7 @@ class BetService {
           resultCents: Value(resultCents),
           notes: Value(notes),
           betType: Value(betType),
+          actualReturnCents: Value(status == BetStatus.won ? actualReturnCents : null),
           updatedAt: now,
         ));
       }
@@ -339,10 +349,16 @@ class BetService {
     }
   }
 
-  int _creditAmountFor(BetStatus status, int stakeCents, int oddsScaled, int? cashoutCents) {
+  int _creditAmountFor(
+    BetStatus status,
+    int stakeCents,
+    int oddsScaled,
+    int? cashoutCents,
+    int? actualReturnCents,
+  ) {
     switch (status) {
       case BetStatus.won:
-        return DecimalOdds.potentialReturn(stakeCents, oddsScaled);
+        return actualReturnCents ?? DecimalOdds.potentialReturn(stakeCents, oddsScaled);
       case BetStatus.lost:
         return 0;
       case BetStatus.voided:

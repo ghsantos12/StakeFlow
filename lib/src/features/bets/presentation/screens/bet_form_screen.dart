@@ -67,9 +67,11 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
   final _stakeController = TextEditingController();
   final _oddsController = TextEditingController();
   final _cashoutController = TextEditingController();
+  final _actualReturnController = TextEditingController();
   final _notesController = TextEditingController();
   BetStatus _status = BetStatus.open;
   BetType _betType = BetType.single;
+  bool _adjustReturnManually = false;
   final List<_LegFormData> _legs = [_LegFormData(), _LegFormData()];
 
   bool _loaded = false;
@@ -104,6 +106,9 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _cashoutController.text = bet.cashoutCents != null ? (bet.cashoutCents! / 100).toStringAsFixed(2) : '';
     _notesController.text = bet.notes ?? '';
     _status = bet.status;
+    _adjustReturnManually = bet.actualReturnCents != null;
+    _actualReturnController.text =
+        bet.actualReturnCents != null ? (bet.actualReturnCents! / 100).toStringAsFixed(2) : '';
     _betType = service.typeOf(bet);
     if (_betType == BetType.multiple) {
       final legRows = await service.getLegs(bet.id);
@@ -131,6 +136,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _stakeController.dispose();
     _oddsController.dispose();
     _cashoutController.dispose();
+    _actualReturnController.dispose();
     _notesController.dispose();
     for (final leg in _legs) {
       leg.dispose();
@@ -313,6 +319,35 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
               },
             ),
           ],
+          if (_status == BetStatus.won) ...[
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Ajustar valor recebido manualmente'),
+              subtitle: const Text('Use quando o arredondamento da odd da casa gerar centavos diferentes'),
+              value: _adjustReturnManually,
+              onChanged: (v) => setState(() {
+                _adjustReturnManually = v;
+                if (v && _actualReturnController.text.isEmpty) {
+                  _actualReturnController.text = (_potentialReturn / 100).toStringAsFixed(2);
+                }
+              }),
+            ),
+            if (_adjustReturnManually) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _actualReturnController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Valor total recebido (R\$)'),
+                validator: (v) {
+                  if (_status != BetStatus.won || !_adjustReturnManually) return null;
+                  final cents = Money.parseToCents(v ?? '');
+                  if (cents == null || cents < 0) return 'Valor inválido';
+                  return null;
+                },
+              ),
+            ],
+          ],
           const SizedBox(height: 12),
           TextFormField(
             controller: _notesController,
@@ -482,6 +517,9 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
       final selection = _betType == BetType.single ? _selectionController.text : summarizeLegSelections(legInputs);
       final oddsScaled = _betType == BetType.single ? _oddsScaled! : combinedOddsScaled(legInputs);
       final cashoutCents = _status == BetStatus.cashedOut ? Money.parseToCents(_cashoutController.text) : null;
+      final actualReturnCents = (_status == BetStatus.won && _adjustReturnManually)
+          ? Money.parseToCents(_actualReturnController.text)
+          : null;
 
       if (widget.betId == null) {
         await service.placeBet(
@@ -514,6 +552,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
           betType: _betType,
           legs: _betType == BetType.multiple ? legInputs : const [],
+          actualReturnCents: actualReturnCents,
         );
       }
       if (mounted) context.pop();

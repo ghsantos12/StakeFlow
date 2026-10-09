@@ -241,6 +241,7 @@ class BackupService {
         'resultCents': b.resultCents,
         'notes': b.notes,
         'betType': b.betType?.name,
+        'actualReturnCents': b.actualReturnCents,
         'createdAt': b.createdAt.toIso8601String(),
         'updatedAt': b.updatedAt.toIso8601String(),
       };
@@ -261,6 +262,7 @@ class BackupService {
         resultCents: Value(j['resultCents'] as int?),
         notes: Value(j['notes'] as String?),
         betType: Value(j['betType'] != null ? BetType.values.byName(j['betType'] as String) : null),
+        actualReturnCents: Value(j['actualReturnCents'] as int?),
         createdAt: DateTime.parse(j['createdAt'] as String),
         updatedAt: DateTime.parse(j['updatedAt'] as String),
       );
