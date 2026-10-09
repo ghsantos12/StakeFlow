@@ -75,7 +75,7 @@ class _IndicatorsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.25,
       children: [
         IndicatorTile(
           label: 'Patrimônio total',

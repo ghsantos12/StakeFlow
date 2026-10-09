@@ -63,6 +63,14 @@ class AppTheme {
         backgroundColor: scheme.surfaceContainer,
         indicatorColor: scheme.primaryContainer,
         elevation: 0,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            overflow: TextOverflow.visible,
+          );
+        }),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

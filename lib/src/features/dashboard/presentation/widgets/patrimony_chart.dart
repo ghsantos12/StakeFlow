@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/utils/chart_utils.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../domain/services/analytics_calculations.dart';
@@ -78,12 +79,14 @@ class _PatrimonyChartState extends State<PatrimonyChart> {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 56,
+                    reservedSize: 52,
                     getTitlesWidget: (value, meta) => Padding(
                       padding: const EdgeInsets.only(right: 4),
                       child: Text(
-                        Money.formatCompact((value * 100).round()),
+                        Money.formatAxis((value * 100).round()),
                         style: const TextStyle(fontSize: 10),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                   ),
@@ -92,13 +95,14 @@ class _PatrimonyChartState extends State<PatrimonyChart> {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 28,
-                    interval: (widget.points.length / 5).floor().clamp(1, 1 << 30).toDouble(),
+                    interval: axisLabelInterval(widget.points.length),
                     getTitlesWidget: (value, meta) {
                       final i = value.round();
                       if (i < 0 || i >= widget.points.length) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.only(top: 6),
-                        child: Text(formatDate(widget.points[i].date), style: const TextStyle(fontSize: 10)),
+                        child:
+                            Text(formatDateShort(widget.points[i].date), style: const TextStyle(fontSize: 10)),
                       );
                     },
                   ),

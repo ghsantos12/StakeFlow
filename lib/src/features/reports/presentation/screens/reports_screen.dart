@@ -85,7 +85,7 @@ class _OverviewTab extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.3,
           children: [
             IndicatorTile(label: 'Total apostado', value: Text(Money.format(ind.totalStakedSettled))),
             IndicatorTile(label: 'Total de retornos', value: Text(Money.format(ind.totalReturns))),
@@ -132,7 +132,7 @@ class _BetsTab extends StatelessWidget {
         SectionCard(
           child: ProfitBarChart(
             values: [for (final d in bundle.dailyProfit) d.valueCents],
-            labels: [for (final d in bundle.dailyProfit) formatDate(d.date)],
+            labels: [for (final d in bundle.dailyProfit) formatDateShort(d.date)],
           ),
         ),
         const SizedBox(height: 20),
@@ -141,7 +141,7 @@ class _BetsTab extends StatelessWidget {
         SectionCard(
           child: SimpleLineChart(
             values: [for (final d in bundle.cumulativeProfit) d.valueCents],
-            labels: [for (final d in bundle.cumulativeProfit) formatDate(d.date)],
+            labels: [for (final d in bundle.cumulativeProfit) formatDateShort(d.date)],
           ),
         ),
         const SizedBox(height: 20),
@@ -208,7 +208,7 @@ class _CdbTab extends StatelessWidget {
         SectionCard(
           child: SimpleLineChart(
             values: [for (final d in bundle.bankBalance) d.valueCents],
-            labels: [for (final d in bundle.bankBalance) formatDate(d.date)],
+            labels: [for (final d in bundle.bankBalance) formatDateShort(d.date)],
             color: const Color(0xFF16A34A),
           ),
         ),
@@ -218,7 +218,7 @@ class _CdbTab extends StatelessWidget {
         SectionCard(
           child: ProfitBarChart(
             values: [for (final d in bundle.cdbDaily) d.valueCents],
-            labels: [for (final d in bundle.cdbDaily) formatDate(d.date)],
+            labels: [for (final d in bundle.cdbDaily) formatDateShort(d.date)],
           ),
         ),
         const SizedBox(height: 20),

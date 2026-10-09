@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import '../../core/utils/money.dart';
 import '../../data/database/database.dart';
 import '../models/enums.dart';
 import '../models/exceptions.dart';
@@ -124,7 +125,7 @@ class BackupService {
           b.market,
           b.selection,
           (b.stakeCents / 100).toStringAsFixed(2),
-          (b.oddsScaled / 1000).toStringAsFixed(2),
+          DecimalOdds.format(b.oddsScaled),
           b.status.name,
           b.cashoutCents != null ? (b.cashoutCents! / 100).toStringAsFixed(2) : '',
           b.resultCents != null ? (b.resultCents! / 100).toStringAsFixed(2) : '',

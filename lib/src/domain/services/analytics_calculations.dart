@@ -3,6 +3,7 @@
 /// depender de SQLite (ver testes em test/domain).
 library;
 
+import '../../core/utils/money.dart';
 import '../../data/database/database.dart';
 import '../models/enums.dart';
 import 'daily_series.dart';
@@ -477,7 +478,7 @@ FinancialIndicators computeIndicators(
     totalStaked += b.stakeCents;
     final result = b.resultCents ?? 0;
     netProfit += result;
-    oddsSum += b.oddsScaled / 1000;
+    oddsSum += DecimalOdds.toDouble(b.oddsScaled);
     if (result > biggestWin) biggestWin = result;
     if (result < biggestLoss) biggestLoss = result;
 

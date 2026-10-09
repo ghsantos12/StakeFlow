@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/chart_utils.dart';
 import '../../../../core/utils/money.dart';
 
 /// Gráfico de barras genérico para séries de lucro/prejuízo (verde para
@@ -36,10 +37,12 @@ class ProfitBarChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 56,
+                reservedSize: 52,
                 getTitlesWidget: (value, meta) => Text(
-                  Money.formatCompact((value * 100).round()),
+                  Money.formatAxis((value * 100).round()),
                   style: const TextStyle(fontSize: 10),
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
                 ),
               ),
             ),
@@ -47,7 +50,7 @@ class ProfitBarChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
-                interval: (labels.length / 6).floor().clamp(1, 1 << 30).toDouble(),
+                interval: axisLabelInterval(labels.length),
                 getTitlesWidget: (value, meta) {
                   final i = value.round();
                   if (i < 0 || i >= labels.length) return const SizedBox.shrink();

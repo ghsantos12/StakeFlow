@@ -37,6 +37,23 @@ class Money {
     return format(cents);
   }
 
+  /// Formato bem curto para rótulos de eixo de gráfico: sem símbolo de
+  /// moeda, abreviado com "mil"/"mi" para caber no espaço reservado.
+  static String formatAxis(int cents) {
+    final value = cents / 100;
+    final abs = value.abs();
+    final sign = value < 0 ? '-' : '';
+    final String body;
+    if (abs >= 1000000) {
+      body = '${(abs / 1000000).toStringAsFixed(1).replaceAll('.', ',')} mi';
+    } else if (abs >= 1000) {
+      body = '${(abs / 1000).toStringAsFixed(1).replaceAll('.', ',')} mil';
+    } else {
+      body = abs.round().toString();
+    }
+    return '$sign$body';
+  }
+
   /// Converte uma string digitada pelo usuário para centavos inteiros.
   /// Aceita tanto o formato brasileiro ("1.234,56") quanto o formato com
   /// ponto decimal simples ("1234.56"): quando ambos separadores aparecem,
@@ -64,12 +81,16 @@ class Money {
   static double toReais(int cents) => cents / 100;
 }
 
-/// Representa uma odd decimal armazenada com 3 casas decimais de precisão
-/// como inteiro (ex: 2.50 -> 2500) para evitar erros de ponto flutuante.
+/// Representa uma odd decimal armazenada com 4 casas decimais de precisão
+/// como inteiro (ex: 2.50 -> 25000, 2.1234 -> 21234) para evitar erros de
+/// ponto flutuante e preservar odds com mais de 2 casas.
 class DecimalOdds {
   DecimalOdds._();
 
-  static const int scale = 1000;
+  static const int scale = 10000;
+
+  /// Menor odd válida (1.01), já na escala interna.
+  static const int minScaled = scale * 101 ~/ 100;
 
   static int? parse(String input) {
     final cleaned = input.trim().replaceAll(',', '.');
@@ -82,12 +103,21 @@ class DecimalOdds {
 
   static double toDouble(int scaled) => scaled / scale;
 
+  /// Formata a odd mostrando no mínimo 2 casas decimais, preservando casas
+  /// extras quando a odd foi digitada com mais precisão (ex.: 2,1234).
   static String format(int scaled) {
-    return toDouble(scaled).toStringAsFixed(2);
+    final text = toDouble(scaled).toStringAsFixed(4);
+    final dotIndex = text.indexOf('.');
+    var end = text.length;
+    while (end > dotIndex + 3 && text[end - 1] == '0') {
+      end--;
+    }
+    return text.substring(0, end);
   }
 
-  /// Retorno potencial em centavos = stake * odd.
+  /// Retorno potencial em centavos = stake * odd, arredondado ao centavo
+  /// mais próximo (em vez de truncado).
   static int potentialReturn(int stakeCents, int oddsScaled) {
-    return (stakeCents * oddsScaled) ~/ scale;
+    return (stakeCents * oddsScaled / scale).round();
   }
 }

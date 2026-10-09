@@ -53,8 +53,8 @@ class IndicatorTile extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .labelMedium
-                      ?.copyWith(color: scheme.onSurfaceVariant),
-                  maxLines: 1,
+                      ?.copyWith(color: scheme.onSurfaceVariant, height: 1.15),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

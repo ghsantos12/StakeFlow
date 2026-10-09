@@ -3,7 +3,7 @@
          todo o restante do app funciona 100% offline. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="stakeflow"
+        android:label="StakeFlow"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

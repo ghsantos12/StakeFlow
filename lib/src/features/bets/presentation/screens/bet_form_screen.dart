@@ -63,7 +63,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _marketController.text = bet.market;
     _selectionController.text = bet.selection;
     _stakeController.text = (bet.stakeCents / 100).toStringAsFixed(2);
-    _oddsController.text = (bet.oddsScaled / 1000).toStringAsFixed(2);
+    _oddsController.text = DecimalOdds.format(bet.oddsScaled);
     _cashoutController.text = bet.cashoutCents != null ? (bet.cashoutCents! / 100).toStringAsFixed(2) : '';
     _notesController.text = bet.notes ?? '';
     _status = bet.status;
@@ -87,7 +87,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
 
   int get _potentialReturn {
     final stake = _stakeCents ?? 0;
-    final odds = _oddsScaled ?? 1000;
+    final odds = _oddsScaled ?? DecimalOdds.scale;
     return DecimalOdds.potentialReturn(stake, odds);
   }
 

@@ -273,7 +273,7 @@ class _BetTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(Money.format(bet.stakeCents), style: Theme.of(context).textTheme.bodyMedium),
-                  Text('@ ${(bet.oddsScaled / 1000).toStringAsFixed(2)}',
+                  Text('@ ${DecimalOdds.format(bet.oddsScaled)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                 ],
               ),

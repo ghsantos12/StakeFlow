@@ -269,7 +269,7 @@ class BetService {
 
   void _validateStakeOdds(int stakeCents, int oddsScaled) {
     if (stakeCents <= 0) throw ValidationException('A stake deve ser maior que zero.');
-    if (oddsScaled < 1010) {
+    if (oddsScaled < DecimalOdds.minScaled) {
       throw ValidationException('A odd deve ser maior ou igual a 1,01.');
     }
   }

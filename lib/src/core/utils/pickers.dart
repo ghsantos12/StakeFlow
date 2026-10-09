@@ -31,6 +31,14 @@ String formatDate(DateTime d) {
   return '$dd/$mm/${d.year}';
 }
 
+/// Formato curto (dd/MM), usado em rótulos de eixo de gráfico onde o
+/// espaço horizontal é limitado.
+String formatDateShort(DateTime d) {
+  final dd = d.day.toString().padLeft(2, '0');
+  final mm = d.month.toString().padLeft(2, '0');
+  return '$dd/$mm';
+}
+
 const _monthAbbrev = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
 ];
