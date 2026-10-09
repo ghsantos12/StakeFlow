@@ -1,0 +1,66 @@
+name: Release APK
+
+# Roda a cada push na main. Só cria uma release nova quando a versão em
+# pubspec.yaml ainda não tiver uma tag publicada — ou seja, para lançar
+# uma atualização basta bumpar o "version:" do pubspec.yaml e dar push.
+# O app (lib/src/domain/services/update_service.dart) consulta a release
+# mais recente do GitHub e avisa o usuário quando ela for mais nova que a
+# versão instalada.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler versão do pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//' | sed 's/+.*//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Checar se a tag já tem release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.version.outputs.tag }}")
+          if [ "$STATUS" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Flutter
+        if: steps.check.outputs.exists == 'false'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar dependências
+        if: steps.check.outputs.exists == 'false'
+        run: flutter pub get
+
+      - name: Build APK (release)
+        if: steps.check.outputs.exists == 'false'
+        run: flutter build apk --release
+
+      - name: Publicar release com o APK
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: StakeFlow ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: build/app/outputs/flutter-apk/app-release.apk

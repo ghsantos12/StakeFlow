@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Usada apenas para checar e baixar atualizações do app no GitHub;
+         todo o restante do app funciona 100% offline. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="stakeflow"
         android:name="${applicationName}"

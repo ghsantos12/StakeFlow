@@ -1,7 +1,7 @@
 name: stakeflow
 description: "StakeFlow - Gestão de banca de apostas esportivas"
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.13.2
@@ -31,6 +31,9 @@ dependencies:
   crypto: ^3.0.5
   uuid: ^4.6.0
   shared_preferences: ^2.3.4
+  package_info_plus: ^10.2.2
+  url_launcher: ^6.3.1
+  http: ^1.2.2
 
   cupertino_icons: ^1.0.8
 

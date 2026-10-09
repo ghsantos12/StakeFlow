@@ -6,6 +6,7 @@ import '../domain/services/movement_service.dart';
 import '../domain/services/cdb_service.dart';
 import '../domain/services/analytics_service.dart';
 import '../domain/services/backup_service.dart';
+import '../domain/services/update_service.dart';
 
 final accountServiceProvider = Provider<AccountService>((ref) {
   return AccountService(ref.watch(databaseProvider));
@@ -33,4 +34,8 @@ final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
 
 final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(ref.watch(databaseProvider));
+});
+
+final updateServiceProvider = Provider<UpdateService>((ref) {
+  return UpdateService();
 });

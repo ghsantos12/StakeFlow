@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
+import '../../../../core/widgets/update_dialog.dart';
 import '../../../../domain/models/exceptions.dart';
 import '../../../../providers/core_providers.dart';
 import '../../../../providers/service_providers.dart';
@@ -113,6 +115,22 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          _SectionHeader('Sobre'),
+          Card(
+            child: FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) {
+                final version = snapshot.data?.version;
+                return ListTile(
+                  leading: const Icon(Icons.system_update_alt_outlined),
+                  title: const Text('Verificar atualizações'),
+                  subtitle: Text(version != null ? 'Versão instalada: $version' : 'Carregando versão...'),
+                  onTap: () => _checkForUpdates(context, ref),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionHeader('Zona de risco'),
           Card(
             child: ListTile(
@@ -148,6 +166,16 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (result != null) {
       await ref.read(annualCdiRateProvider.notifier).setValue(result);
+    }
+  }
+
+  Future<void> _checkForUpdates(BuildContext context, WidgetRef ref) async {
+    final update = await ref.read(updateServiceProvider).checkForUpdate();
+    if (!context.mounted) return;
+    if (update != null) {
+      await showUpdateDialog(context, update);
+    } else {
+      showAppSnackBar(context, 'Você já está na versão mais recente.');
     }
   }
 
