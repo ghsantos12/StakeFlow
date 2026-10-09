@@ -53,6 +53,24 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: flutter pub get
 
+      # Decodifica a keystore de release a partir do segredo do repositório
+      # para que todo build (local ou CI) assine o APK com a mesma chave —
+      # caso contrário o Android recusa instalar updates por cima do app já
+      # instalado ("app não instalado"). Precisa dos segredos
+      # RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD,
+      # RELEASE_KEY_ALIAS e RELEASE_KEY_PASSWORD configurados no repositório
+      # (Settings → Secrets and variables → Actions).
+      - name: Configurar keystore de release
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/stakeflow-release.keystore
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
+          keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
+          storeFile=stakeflow-release.keystore
+          EOF
+
       # O build usa compileSdk 36 / NDK 28.x, que o runner do GitHub pode
       # não ter licenciado ainda. Sem isso, o Gradle fica esperando uma
       # confirmação interativa que nunca chega e o job trava indefinidamente

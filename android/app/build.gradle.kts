@@ -1,7 +1,23 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Chave de assinatura de release estável: sem isso, cada build (em
+// especial no CI, que roda em uma VM nova a cada vez) assinaria o APK
+// com uma chave debug diferente e o Android recusaria instalar updates
+// por cima do app já instalado ("app não instalado"), exigindo
+// desinstalar antes de cada atualização. Ver android/key.properties
+// (fora do git) e o segredo RELEASE_KEYSTORE_BASE64 no CI.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -29,11 +45,29 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasKeystoreProperties) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Usa a chave de release quando key.properties existir (builds
+            // locais com a keystore configurada, ou CI com o segredo
+            // decodificado); cai para a chave debug apenas como fallback
+            // para que `flutter run --release` continue funcionando sem
+            // configuração extra em uma máquina de desenvolvimento nova.
+            signingConfig = if (hasKeystoreProperties) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
