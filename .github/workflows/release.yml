@@ -16,6 +16,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -52,8 +53,17 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: flutter pub get
 
+      # O build usa compileSdk 36 / NDK 28.x, que o runner do GitHub pode
+      # não ter licenciado ainda. Sem isso, o Gradle fica esperando uma
+      # confirmação interativa que nunca chega e o job trava indefinidamente
+      # (foi o que aconteceu nos builds de v1.0.1 e v1.0.2).
+      - name: Aceitar licenças do Android SDK
+        if: steps.check.outputs.exists == 'false'
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+
       - name: Build APK (release)
         if: steps.check.outputs.exists == 'false'
+        timeout-minutes: 20
         run: flutter build apk --release
 
       - name: Publicar release com o APK
