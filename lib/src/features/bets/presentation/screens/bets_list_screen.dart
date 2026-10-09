@@ -256,8 +256,28 @@ class _BetTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(bet.event, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall),
+                    Row(
+                      children: [
+                        if ((bet.betType ?? BetType.single) == BetType.multiple) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: scheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Múltipla',
+                              style: TextStyle(fontSize: 10, color: scheme.onSecondaryContainer),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(bet.event, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       '$accountName · ${bet.sport} · ${formatDateTime(bet.placedAt)}',

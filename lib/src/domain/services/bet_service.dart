@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../core/utils/money.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../models/bet_leg.dart';
 import '../models/enums.dart';
 import '../models/exceptions.dart';
 
@@ -24,6 +25,15 @@ class BetService {
 
   Stream<BetRow?> watchById(int id) => _db.betsDao.watchById(id);
 
+  /// Tipo efetivo da aposta — apostas gravadas antes do suporte a
+  /// múltiplas ficam com [BetRow.betType] nulo e devem ser tratadas como
+  /// [BetType.single].
+  BetType typeOf(BetRow bet) => bet.betType ?? BetType.single;
+
+  Future<List<BetLegRow>> getLegs(int betId) => _db.betLegsDao.getForBet(betId);
+
+  Stream<List<BetLegRow>> watchLegs(int betId) => _db.betLegsDao.watchForBet(betId);
+
   Future<int> placeBet({
     required int accountId,
     required DateTime placedAt,
@@ -34,6 +44,8 @@ class BetService {
     required int stakeCents,
     required int oddsScaled,
     String? notes,
+    BetType betType = BetType.single,
+    List<BetLegInput> legs = const [],
   }) {
     return _saveBet(
       betId: null,
@@ -49,6 +61,8 @@ class BetService {
       settledAt: null,
       cashoutCents: null,
       notes: notes,
+      betType: betType,
+      legs: legs,
     );
   }
 
@@ -68,6 +82,8 @@ class BetService {
     DateTime? settledAt,
     int? cashoutCents,
     String? notes,
+    BetType betType = BetType.single,
+    List<BetLegInput> legs = const [],
   }) {
     return _saveBet(
       betId: betId,
@@ -83,6 +99,8 @@ class BetService {
       settledAt: settledAt,
       cashoutCents: cashoutCents,
       notes: notes,
+      betType: betType,
+      legs: legs,
     );
   }
 
@@ -110,6 +128,8 @@ class BetService {
       settledAt: settledAt,
       cashoutCents: cashoutCents,
       notes: bet.notes,
+      betType: typeOf(bet),
+      legs: await _legInputsOf(bet),
     );
   }
 
@@ -131,12 +151,24 @@ class BetService {
       settledAt: null,
       cashoutCents: null,
       notes: bet.notes,
+      betType: typeOf(bet),
+      legs: await _legInputsOf(bet),
     );
+  }
+
+  Future<List<BetLegInput>> _legInputsOf(BetRow bet) async {
+    if (typeOf(bet) != BetType.multiple) return const [];
+    final rows = await _db.betLegsDao.getForBet(bet.id);
+    return [
+      for (final r in rows)
+        BetLegInput(sport: r.sport, event: r.event, market: r.market, selection: r.selection, oddsScaled: r.oddsScaled),
+    ];
   }
 
   Future<void> deleteBet(int betId) async {
     await _db.transaction(() async {
       await _db.ledgerDao.deleteForBet(betId);
+      await _db.betLegsDao.deleteForBet(betId);
       await _db.betsDao.deleteBet(betId);
     });
   }
@@ -155,6 +187,8 @@ class BetService {
     required DateTime? settledAt,
     required int? cashoutCents,
     String? notes,
+    BetType betType = BetType.single,
+    List<BetLegInput> legs = const [],
   }) async {
     _validateStakeOdds(stakeCents, oddsScaled);
     if (event.trim().isEmpty) throw ValidationException('Informe o evento/partida.');
@@ -165,12 +199,26 @@ class BetService {
     if (status == BetStatus.cashedOut && (cashoutCents == null || cashoutCents < 0)) {
       throw ValidationException('Informe o valor recebido no cashout.');
     }
+    if (betType == BetType.multiple) {
+      if (legs.length < 2) {
+        throw ValidationException('Uma aposta múltipla precisa de pelo menos duas seleções.');
+      }
+      for (final leg in legs) {
+        if (leg.sport.trim().isEmpty || leg.event.trim().isEmpty || leg.selection.trim().isEmpty) {
+          throw ValidationException('Preencha esporte, evento e seleção de todas as pernas da múltipla.');
+        }
+        if (leg.oddsScaled < DecimalOdds.minScaled) {
+          throw ValidationException('A odd de cada seleção da múltipla deve ser maior ou igual a 1,01.');
+        }
+      }
+    }
 
     return _db.transaction<int>(() async {
       final now = DateTime.now();
 
       if (betId != null) {
         await _db.ledgerDao.deleteForBet(betId);
+        await _db.betLegsDao.deleteForBet(betId);
       }
 
       final account = await _requireBookmaker(accountId);
@@ -199,6 +247,7 @@ class BetService {
           cashoutCents: Value(status == BetStatus.cashedOut ? cashoutCents : null),
           resultCents: Value(resultCents),
           notes: Value(notes),
+          betType: Value(betType),
           createdAt: now,
           updatedAt: now,
         ));
@@ -220,8 +269,24 @@ class BetService {
           cashoutCents: Value(status == BetStatus.cashedOut ? cashoutCents : null),
           resultCents: Value(resultCents),
           notes: Value(notes),
+          betType: Value(betType),
           updatedAt: now,
         ));
+      }
+
+      if (betType == BetType.multiple) {
+        await _db.betLegsDao.insertLegs([
+          for (var i = 0; i < legs.length; i++)
+            BetLegsCompanion.insert(
+              betId: id,
+              position: i,
+              sport: legs[i].sport.trim(),
+              event: legs[i].event.trim(),
+              market: legs[i].market.trim(),
+              selection: legs[i].selection.trim(),
+              oddsScaled: legs[i].oddsScaled,
+            ),
+        ]);
       }
 
       await _db.ledgerDao.insertEntry(LedgerEntriesCompanion.insert(

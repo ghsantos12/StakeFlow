@@ -29,6 +29,13 @@ class Bets extends Table {
 
   TextColumn get notes => text().nullable()();
 
+  /// Nulo para apostas gravadas antes do suporte a múltiplas — tratar como
+  /// [BetType.single]. Para [BetType.multiple], os campos [sport]/[event]/
+  /// [market]/[selection]/[oddsScaled] acima guardam um resumo combinado
+  /// (odd = produto das odds de cada seleção em [BetLegs]); o detalhe de
+  /// cada jogo fica nas linhas de [BetLegs] vinculadas a esta aposta.
+  TextColumn get betType => textEnum<BetType>().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 }

@@ -26,6 +26,22 @@ extension BetStatusX on BetStatus {
   bool get countsForHitRate => this == BetStatus.won || this == BetStatus.lost;
 }
 
+/// Uma aposta simples tem um único jogo/mercado/seleção; uma múltipla
+/// (combinada) reúne duas ou mais seleções (ver [BetLegRow]) com uma odd
+/// combinada e um resultado único para o conjunto.
+enum BetType { single, multiple }
+
+extension BetTypeX on BetType {
+  String get label {
+    switch (this) {
+      case BetType.single:
+        return 'Simples';
+      case BetType.multiple:
+        return 'Múltipla';
+    }
+  }
+}
+
 /// Tipos de movimentação financeira registradas no extrato (ledger).
 enum LedgerEntryType {
   externalDeposit,

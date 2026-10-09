@@ -5,11 +5,45 @@ import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
 import '../../../../data/database/database.dart';
+import '../../../../domain/models/bet_leg.dart';
 import '../../../../domain/models/enums.dart';
 import '../../../../domain/models/exceptions.dart';
 import '../../../../providers/data_providers.dart';
 import '../../../../providers/service_providers.dart';
 import '../widgets/bet_status_badge.dart';
+
+/// Controllers de uma seleção dentro do formulário de aposta múltipla.
+class _LegFormData {
+  _LegFormData({String? sport})
+      : sport = sport ?? kDefaultSports.first,
+        eventController = TextEditingController(),
+        marketController = TextEditingController(),
+        selectionController = TextEditingController(),
+        oddsController = TextEditingController();
+
+  String sport;
+  final TextEditingController eventController;
+  final TextEditingController marketController;
+  final TextEditingController selectionController;
+  final TextEditingController oddsController;
+
+  int? get oddsScaled => DecimalOdds.parse(oddsController.text);
+
+  BetLegInput toInput() => BetLegInput(
+        sport: sport,
+        event: eventController.text,
+        market: marketController.text,
+        selection: selectionController.text,
+        oddsScaled: oddsScaled ?? DecimalOdds.scale,
+      );
+
+  void dispose() {
+    eventController.dispose();
+    marketController.dispose();
+    selectionController.dispose();
+    oddsController.dispose();
+  }
+}
 
 class BetFormScreen extends ConsumerStatefulWidget {
   const BetFormScreen({super.key, this.betId});
@@ -35,6 +69,8 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
   final _cashoutController = TextEditingController();
   final _notesController = TextEditingController();
   BetStatus _status = BetStatus.open;
+  BetType _betType = BetType.single;
+  final List<_LegFormData> _legs = [_LegFormData(), _LegFormData()];
 
   bool _loaded = false;
   bool _saving = false;
@@ -50,7 +86,8 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
   }
 
   Future<void> _loadExisting() async {
-    final bet = await ref.read(betServiceProvider).getById(widget.betId!);
+    final service = ref.read(betServiceProvider);
+    final bet = await service.getById(widget.betId!);
     if (bet == null) {
       if (mounted) setState(() => _loaded = true);
       return;
@@ -67,6 +104,22 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _cashoutController.text = bet.cashoutCents != null ? (bet.cashoutCents! / 100).toStringAsFixed(2) : '';
     _notesController.text = bet.notes ?? '';
     _status = bet.status;
+    _betType = service.typeOf(bet);
+    if (_betType == BetType.multiple) {
+      final legRows = await service.getLegs(bet.id);
+      if (legRows.isNotEmpty) {
+        _legs
+          ..clear()
+          ..addAll([
+            for (final leg in legRows)
+              _LegFormData(sport: leg.sport)
+                ..eventController.text = leg.event
+                ..marketController.text = leg.market
+                ..selectionController.text = leg.selection
+                ..oddsController.text = DecimalOdds.format(leg.oddsScaled),
+          ]);
+      }
+    }
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -79,16 +132,23 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _oddsController.dispose();
     _cashoutController.dispose();
     _notesController.dispose();
+    for (final leg in _legs) {
+      leg.dispose();
+    }
     super.dispose();
   }
 
   int? get _stakeCents => Money.parseToCents(_stakeController.text);
   int? get _oddsScaled => DecimalOdds.parse(_oddsController.text);
 
+  int get _effectiveOddsScaled {
+    if (_betType == BetType.single) return _oddsScaled ?? DecimalOdds.scale;
+    return combinedOddsScaled([for (final leg in _legs) leg.toInput()]);
+  }
+
   int get _potentialReturn {
     final stake = _stakeCents ?? 0;
-    final odds = _oddsScaled ?? DecimalOdds.scale;
-    return DecimalOdds.potentialReturn(stake, odds);
+    return DecimalOdds.potentialReturn(stake, _effectiveOddsScaled);
   }
 
   @override
@@ -163,63 +223,27 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
             },
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _sport,
-            decoration: const InputDecoration(labelText: 'Esporte'),
-            items: [
-              for (final s in kDefaultSports) DropdownMenuItem(value: s, child: Text(s)),
+          SegmentedButton<BetType>(
+            segments: const [
+              ButtonSegment(value: BetType.single, label: Text('Simples')),
+              ButtonSegment(value: BetType.multiple, label: Text('Múltipla')),
             ],
-            onChanged: (v) => setState(() => _sport = v ?? _sport),
+            selected: {_betType},
+            onSelectionChanged: (s) => setState(() => _betType = s.first),
           ),
+          const SizedBox(height: 16),
+          if (_betType == BetType.single) ..._buildSingleFields() else ..._buildMultipleFields(context),
           const SizedBox(height: 12),
           TextFormField(
-            controller: _eventController,
-            decoration: const InputDecoration(labelText: 'Evento / partida'),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o evento' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _marketController,
-            decoration: const InputDecoration(labelText: 'Mercado'),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o mercado' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _selectionController,
-            decoration: const InputDecoration(labelText: 'Descrição da seleção'),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe a seleção' : null,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _stakeController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Stake (R\$)'),
-                  onChanged: (_) => setState(() {}),
-                  validator: (v) {
-                    final cents = Money.parseToCents(v ?? '');
-                    if (cents == null || cents <= 0) return 'Stake inválida';
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _oddsController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Odd decimal'),
-                  onChanged: (_) => setState(() {}),
-                  validator: (v) {
-                    final odds = DecimalOdds.parse(v ?? '');
-                    if (odds == null) return 'Odd inválida (mín. 1,01)';
-                    return null;
-                  },
-                ),
-              ),
-            ],
+            controller: _stakeController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Stake (R\$)'),
+            onChanged: (_) => setState(() {}),
+            validator: (v) {
+              final cents = Money.parseToCents(v ?? '');
+              if (cents == null || cents <= 0) return 'Stake inválida';
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -307,42 +331,189 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     );
   }
 
+  List<Widget> _buildSingleFields() {
+    return [
+      DropdownButtonFormField<String>(
+        initialValue: _sport,
+        decoration: const InputDecoration(labelText: 'Esporte'),
+        items: [
+          for (final s in kDefaultSports) DropdownMenuItem(value: s, child: Text(s)),
+        ],
+        onChanged: (v) => setState(() => _sport = v ?? _sport),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _eventController,
+        decoration: const InputDecoration(labelText: 'Evento / partida'),
+        validator: (v) =>
+            (_betType == BetType.single && (v == null || v.trim().isEmpty)) ? 'Informe o evento' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _marketController,
+        decoration: const InputDecoration(labelText: 'Mercado'),
+        validator: (v) =>
+            (_betType == BetType.single && (v == null || v.trim().isEmpty)) ? 'Informe o mercado' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _selectionController,
+        decoration: const InputDecoration(labelText: 'Descrição da seleção'),
+        validator: (v) =>
+            (_betType == BetType.single && (v == null || v.trim().isEmpty)) ? 'Informe a seleção' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _oddsController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(labelText: 'Odd decimal'),
+        onChanged: (_) => setState(() {}),
+        validator: (v) {
+          if (_betType != BetType.single) return null;
+          final odds = DecimalOdds.parse(v ?? '');
+          if (odds == null) return 'Odd inválida (mín. 1,01)';
+          return null;
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildMultipleFields(BuildContext context) {
+    return [
+      for (var i = 0; i < _legs.length; i++) _buildLegCard(context, i),
+      const SizedBox(height: 4),
+      OutlinedButton.icon(
+        onPressed: () => setState(() => _legs.add(_LegFormData())),
+        icon: const Icon(Icons.add),
+        label: const Text('Adicionar seleção'),
+      ),
+      const SizedBox(height: 12),
+      _ReadOnlyField(
+        label: 'Odd combinada (${_legs.length} seleções)',
+        value: DecimalOdds.format(_effectiveOddsScaled),
+      ),
+    ];
+  }
+
+  Widget _buildLegCard(BuildContext context, int index) {
+    final leg = _legs[index];
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Seleção ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
+                ),
+                if (_legs.length > 2)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _legs.removeAt(index).dispose()),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: leg.sport,
+              decoration: const InputDecoration(labelText: 'Esporte'),
+              items: [
+                for (final s in kDefaultSports) DropdownMenuItem(value: s, child: Text(s)),
+              ],
+              onChanged: (v) => setState(() => leg.sport = v ?? leg.sport),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: leg.eventController,
+              decoration: const InputDecoration(labelText: 'Evento / partida'),
+              validator: (v) =>
+                  (_betType == BetType.multiple && (v == null || v.trim().isEmpty)) ? 'Informe o evento' : null,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: leg.marketController,
+              decoration: const InputDecoration(labelText: 'Mercado'),
+              validator: (v) =>
+                  (_betType == BetType.multiple && (v == null || v.trim().isEmpty)) ? 'Informe o mercado' : null,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: leg.selectionController,
+              decoration: const InputDecoration(labelText: 'Descrição da seleção'),
+              validator: (v) =>
+                  (_betType == BetType.multiple && (v == null || v.trim().isEmpty)) ? 'Informe a seleção' : null,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: leg.oddsController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Odd decimal'),
+              onChanged: (_) => setState(() {}),
+              validator: (v) {
+                if (_betType != BetType.multiple) return null;
+                final odds = DecimalOdds.parse(v ?? '');
+                if (odds == null) return 'Odd inválida (mín. 1,01)';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _accountId == null) return;
+    if (_betType == BetType.multiple && _legs.length < 2) {
+      showAppSnackBar(context, 'Uma aposta múltipla precisa de pelo menos duas seleções.', isError: true);
+      return;
+    }
     setState(() => _saving = true);
     final service = ref.read(betServiceProvider);
     try {
       final stakeCents = _stakeCents!;
-      final oddsScaled = _oddsScaled!;
+      final legInputs = [for (final leg in _legs) leg.toInput()];
+      final sport = _betType == BetType.single ? _sport : summarizeLegSport(legInputs);
+      final event = _betType == BetType.single ? _eventController.text : summarizeLegEvents(legInputs);
+      final market = _betType == BetType.single ? _marketController.text : 'Combinada';
+      final selection = _betType == BetType.single ? _selectionController.text : summarizeLegSelections(legInputs);
+      final oddsScaled = _betType == BetType.single ? _oddsScaled! : combinedOddsScaled(legInputs);
       final cashoutCents = _status == BetStatus.cashedOut ? Money.parseToCents(_cashoutController.text) : null;
 
       if (widget.betId == null) {
         await service.placeBet(
           accountId: _accountId!,
           placedAt: _placedAt,
-          sport: _sport,
-          event: _eventController.text,
-          market: _marketController.text,
-          selection: _selectionController.text,
+          sport: sport,
+          event: event,
+          market: market,
+          selection: selection,
           stakeCents: stakeCents,
           oddsScaled: oddsScaled,
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          betType: _betType,
+          legs: _betType == BetType.multiple ? legInputs : const [],
         );
       } else {
         await service.updateBet(
           betId: widget.betId!,
           accountId: _accountId!,
           placedAt: _placedAt,
-          sport: _sport,
-          event: _eventController.text,
-          market: _marketController.text,
-          selection: _selectionController.text,
+          sport: sport,
+          event: event,
+          market: market,
+          selection: selection,
           stakeCents: stakeCents,
           oddsScaled: oddsScaled,
           status: _status,
           settledAt: _settledAt,
           cashoutCents: cashoutCents,
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          betType: _betType,
+          legs: _betType == BetType.multiple ? legInputs : const [],
         );
       }
       if (mounted) context.pop();

@@ -23,6 +23,7 @@ class BackupService {
   Future<String> exportBackupJson() async {
     final accounts = await _db.accountsDao.getAll(includeArchived: true);
     final bets = await _db.betsDao.getAll();
+    final betLegs = [for (final bet in bets) ...await _db.betLegsDao.getForBet(bet.id)];
     final movements = await _db.movementsDao.getAll();
     final cdbYields = await _db.cdbYieldsDao.getAll();
     final ledger = await _db.ledgerDao.getAllOrderedByDate();
@@ -32,6 +33,7 @@ class BackupService {
       'exportedAt': DateTime.now().toIso8601String(),
       'accounts': accounts.map(_accountToJson).toList(),
       'bets': bets.map(_betToJson).toList(),
+      'betLegs': betLegs.map(_betLegToJson).toList(),
       'movements': movements.map(_movementToJson).toList(),
       'cdbYields': cdbYields.map(_cdbYieldToJson).toList(),
       'ledgerEntries': ledger.map(_ledgerToJson).toList(),
@@ -53,6 +55,7 @@ class BackupService {
 
     final accountsJson = (map['accounts'] as List?) ?? [];
     final betsJson = (map['bets'] as List?) ?? [];
+    final betLegsJson = (map['betLegs'] as List?) ?? [];
     final movementsJson = (map['movements'] as List?) ?? [];
     final cdbYieldsJson = (map['cdbYields'] as List?) ?? [];
     final ledgerJson = (map['ledgerEntries'] as List?) ?? [];
@@ -62,6 +65,7 @@ class BackupService {
         await _db.delete(_db.ledgerEntries).go();
         await _db.delete(_db.cdbYields).go();
         await _db.delete(_db.movements).go();
+        await _db.delete(_db.betLegs).go();
         await _db.delete(_db.bets).go();
         await _db.delete(_db.accounts).go();
 
@@ -71,6 +75,10 @@ class BackupService {
         }
         for (final raw in betsJson) {
           await _db.into(_db.bets).insert(_betFromJson(raw as Map<String, dynamic>),
+              mode: InsertMode.insertOrReplace);
+        }
+        for (final raw in betLegsJson) {
+          await _db.into(_db.betLegs).insert(_betLegFromJson(raw as Map<String, dynamic>),
               mode: InsertMode.insertOrReplace);
         }
         for (final raw in movementsJson) {
@@ -232,6 +240,7 @@ class BackupService {
         'cashoutCents': b.cashoutCents,
         'resultCents': b.resultCents,
         'notes': b.notes,
+        'betType': b.betType?.name,
         'createdAt': b.createdAt.toIso8601String(),
         'updatedAt': b.updatedAt.toIso8601String(),
       };
@@ -251,8 +260,31 @@ class BackupService {
         cashoutCents: Value(j['cashoutCents'] as int?),
         resultCents: Value(j['resultCents'] as int?),
         notes: Value(j['notes'] as String?),
+        betType: Value(j['betType'] != null ? BetType.values.byName(j['betType'] as String) : null),
         createdAt: DateTime.parse(j['createdAt'] as String),
         updatedAt: DateTime.parse(j['updatedAt'] as String),
+      );
+
+  Map<String, dynamic> _betLegToJson(BetLegRow l) => {
+        'id': l.id,
+        'betId': l.betId,
+        'position': l.position,
+        'sport': l.sport,
+        'event': l.event,
+        'market': l.market,
+        'selection': l.selection,
+        'oddsScaled': l.oddsScaled,
+      };
+
+  BetLegsCompanion _betLegFromJson(Map<String, dynamic> j) => BetLegsCompanion.insert(
+        id: Value(j['id'] as int),
+        betId: j['betId'] as int,
+        position: j['position'] as int,
+        sport: j['sport'] as String,
+        event: j['event'] as String,
+        market: j['market'] as String,
+        selection: j['selection'] as String,
+        oddsScaled: j['oddsScaled'] as int,
       );
 
   Map<String, dynamic> _movementToJson(MovementRow m) => {

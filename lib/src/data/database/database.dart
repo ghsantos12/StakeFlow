@@ -9,6 +9,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import '../../domain/models/enums.dart';
 import 'tables/accounts_table.dart';
 import 'tables/bets_table.dart';
+import 'tables/bet_legs_table.dart';
 import 'tables/movements_table.dart';
 import 'tables/cdb_yields_table.dart';
 import 'tables/ledger_entries_table.dart';
@@ -23,6 +24,7 @@ import 'tables/bills_receivable_table.dart';
 
 import 'daos/accounts_dao.dart';
 import 'daos/bets_dao.dart';
+import 'daos/bet_legs_dao.dart';
 import 'daos/movements_dao.dart';
 import 'daos/ledger_dao.dart';
 import 'daos/cdb_yields_dao.dart';
@@ -41,6 +43,7 @@ part 'database.g.dart';
   tables: [
     Accounts,
     Bets,
+    BetLegs,
     Movements,
     CdbYields,
     LedgerEntries,
@@ -56,6 +59,7 @@ part 'database.g.dart';
   daos: [
     AccountsDao,
     BetsDao,
+    BetLegsDao,
     MovementsDao,
     LedgerDao,
     CdbYieldsDao,
@@ -76,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -104,6 +108,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(movements, movements.receivableId);
 
             await m.addColumn(ledgerEntries, ledgerEntries.creditCardBillPaymentId);
+          }
+          // v2 -> v3: suporte a apostas múltiplas (combinadas). Apostas
+          // existentes ficam com betType nulo, tratado como [BetType.single].
+          if (from < 3) {
+            await m.addColumn(bets, bets.betType);
+            await m.createTable(betLegs);
           }
         },
       );

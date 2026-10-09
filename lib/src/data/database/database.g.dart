@@ -1005,6 +1005,15 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<BetType?, String> betType =
+      GeneratedColumn<String>(
+        'bet_type',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<BetType?>($BetsTable.$converterbetTypen);
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1043,6 +1052,7 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
     cashoutCents,
     resultCents,
     notes,
+    betType,
     createdAt,
     updatedAt,
   ];
@@ -1238,6 +1248,12 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      betType: $BetsTable.$converterbetTypen.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}bet_type'],
+        ),
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1256,6 +1272,10 @@ class $BetsTable extends Bets with TableInfo<$BetsTable, BetRow> {
 
   static JsonTypeConverter2<BetStatus, String, String> $converterstatus =
       const EnumNameConverter<BetStatus>(BetStatus.values);
+  static JsonTypeConverter2<BetType, String, String> $converterbetType =
+      const EnumNameConverter<BetType>(BetType.values);
+  static JsonTypeConverter2<BetType?, String?, String?> $converterbetTypen =
+      JsonTypeConverter2.asNullable($converterbetType);
 }
 
 class BetRow extends DataClass implements Insertable<BetRow> {
@@ -1278,6 +1298,13 @@ class BetRow extends DataClass implements Insertable<BetRow> {
   /// Nulo enquanto a aposta estiver em aberto.
   final int? resultCents;
   final String? notes;
+
+  /// Nulo para apostas gravadas antes do suporte a múltiplas — tratar como
+  /// [BetType.single]. Para [BetType.multiple], os campos [sport]/[event]/
+  /// [market]/[selection]/[oddsScaled] acima guardam um resumo combinado
+  /// (odd = produto das odds de cada seleção em [BetLegs]); o detalhe de
+  /// cada jogo fica nas linhas de [BetLegs] vinculadas a esta aposta.
+  final BetType? betType;
   final DateTime createdAt;
   final DateTime updatedAt;
   const BetRow({
@@ -1295,6 +1322,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     this.cashoutCents,
     this.resultCents,
     this.notes,
+    this.betType,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1327,6 +1355,11 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || betType != null) {
+      map['bet_type'] = Variable<String>(
+        $BetsTable.$converterbetTypen.toSql(betType),
+      );
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1356,6 +1389,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      betType: betType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(betType),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1383,6 +1419,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
       cashoutCents: serializer.fromJson<int?>(json['cashoutCents']),
       resultCents: serializer.fromJson<int?>(json['resultCents']),
       notes: serializer.fromJson<String?>(json['notes']),
+      betType: $BetsTable.$converterbetTypen.fromJson(
+        serializer.fromJson<String?>(json['betType']),
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1407,6 +1446,9 @@ class BetRow extends DataClass implements Insertable<BetRow> {
       'cashoutCents': serializer.toJson<int?>(cashoutCents),
       'resultCents': serializer.toJson<int?>(resultCents),
       'notes': serializer.toJson<String?>(notes),
+      'betType': serializer.toJson<String?>(
+        $BetsTable.$converterbetTypen.toJson(betType),
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1427,6 +1469,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     Value<int?> cashoutCents = const Value.absent(),
     Value<int?> resultCents = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<BetType?> betType = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => BetRow(
@@ -1444,6 +1487,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     cashoutCents: cashoutCents.present ? cashoutCents.value : this.cashoutCents,
     resultCents: resultCents.present ? resultCents.value : this.resultCents,
     notes: notes.present ? notes.value : this.notes,
+    betType: betType.present ? betType.value : this.betType,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1471,6 +1515,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
           ? data.resultCents.value
           : this.resultCents,
       notes: data.notes.present ? data.notes.value : this.notes,
+      betType: data.betType.present ? data.betType.value : this.betType,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1493,6 +1538,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
           ..write('cashoutCents: $cashoutCents, ')
           ..write('resultCents: $resultCents, ')
           ..write('notes: $notes, ')
+          ..write('betType: $betType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1515,6 +1561,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
     cashoutCents,
     resultCents,
     notes,
+    betType,
     createdAt,
     updatedAt,
   );
@@ -1536,6 +1583,7 @@ class BetRow extends DataClass implements Insertable<BetRow> {
           other.cashoutCents == this.cashoutCents &&
           other.resultCents == this.resultCents &&
           other.notes == this.notes &&
+          other.betType == this.betType &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1555,6 +1603,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
   final Value<int?> cashoutCents;
   final Value<int?> resultCents;
   final Value<String?> notes;
+  final Value<BetType?> betType;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const BetsCompanion({
@@ -1572,6 +1621,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     this.cashoutCents = const Value.absent(),
     this.resultCents = const Value.absent(),
     this.notes = const Value.absent(),
+    this.betType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1590,6 +1640,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     this.cashoutCents = const Value.absent(),
     this.resultCents = const Value.absent(),
     this.notes = const Value.absent(),
+    this.betType = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : accountId = Value(accountId),
@@ -1618,6 +1669,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     Expression<int>? cashoutCents,
     Expression<int>? resultCents,
     Expression<String>? notes,
+    Expression<String>? betType,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1636,6 +1688,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
       if (cashoutCents != null) 'cashout_cents': cashoutCents,
       if (resultCents != null) 'result_cents': resultCents,
       if (notes != null) 'notes': notes,
+      if (betType != null) 'bet_type': betType,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1656,6 +1709,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     Value<int?>? cashoutCents,
     Value<int?>? resultCents,
     Value<String?>? notes,
+    Value<BetType?>? betType,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1674,6 +1728,7 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
       cashoutCents: cashoutCents ?? this.cashoutCents,
       resultCents: resultCents ?? this.resultCents,
       notes: notes ?? this.notes,
+      betType: betType ?? this.betType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1726,6 +1781,11 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (betType.present) {
+      map['bet_type'] = Variable<String>(
+        $BetsTable.$converterbetTypen.toSql(betType.value),
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1752,8 +1812,509 @@ class BetsCompanion extends UpdateCompanion<BetRow> {
           ..write('cashoutCents: $cashoutCents, ')
           ..write('resultCents: $resultCents, ')
           ..write('notes: $notes, ')
+          ..write('betType: $betType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BetLegsTable extends BetLegs with TableInfo<$BetLegsTable, BetLegRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BetLegsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _betIdMeta = const VerificationMeta('betId');
+  @override
+  late final GeneratedColumn<int> betId = GeneratedColumn<int>(
+    'bet_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES bets (id)',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sportMeta = const VerificationMeta('sport');
+  @override
+  late final GeneratedColumn<String> sport = GeneratedColumn<String>(
+    'sport',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventMeta = const VerificationMeta('event');
+  @override
+  late final GeneratedColumn<String> event = GeneratedColumn<String>(
+    'event',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _marketMeta = const VerificationMeta('market');
+  @override
+  late final GeneratedColumn<String> market = GeneratedColumn<String>(
+    'market',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _selectionMeta = const VerificationMeta(
+    'selection',
+  );
+  @override
+  late final GeneratedColumn<String> selection = GeneratedColumn<String>(
+    'selection',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _oddsScaledMeta = const VerificationMeta(
+    'oddsScaled',
+  );
+  @override
+  late final GeneratedColumn<int> oddsScaled = GeneratedColumn<int>(
+    'odds_scaled',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    betId,
+    position,
+    sport,
+    event,
+    market,
+    selection,
+    oddsScaled,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'bet_legs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BetLegRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('bet_id')) {
+      context.handle(
+        _betIdMeta,
+        betId.isAcceptableOrUnknown(data['bet_id']!, _betIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_betIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('sport')) {
+      context.handle(
+        _sportMeta,
+        sport.isAcceptableOrUnknown(data['sport']!, _sportMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sportMeta);
+    }
+    if (data.containsKey('event')) {
+      context.handle(
+        _eventMeta,
+        event.isAcceptableOrUnknown(data['event']!, _eventMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventMeta);
+    }
+    if (data.containsKey('market')) {
+      context.handle(
+        _marketMeta,
+        market.isAcceptableOrUnknown(data['market']!, _marketMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_marketMeta);
+    }
+    if (data.containsKey('selection')) {
+      context.handle(
+        _selectionMeta,
+        selection.isAcceptableOrUnknown(data['selection']!, _selectionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_selectionMeta);
+    }
+    if (data.containsKey('odds_scaled')) {
+      context.handle(
+        _oddsScaledMeta,
+        oddsScaled.isAcceptableOrUnknown(data['odds_scaled']!, _oddsScaledMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_oddsScaledMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BetLegRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BetLegRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      betId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bet_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      sport: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sport'],
+      )!,
+      event: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event'],
+      )!,
+      market: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}market'],
+      )!,
+      selection: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}selection'],
+      )!,
+      oddsScaled: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}odds_scaled'],
+      )!,
+    );
+  }
+
+  @override
+  $BetLegsTable createAlias(String alias) {
+    return $BetLegsTable(attachedDatabase, alias);
+  }
+}
+
+class BetLegRow extends DataClass implements Insertable<BetLegRow> {
+  final int id;
+  final int betId;
+
+  /// Ordem de exibição das seleções dentro da múltipla.
+  final int position;
+  final String sport;
+  final String event;
+  final String market;
+  final String selection;
+  final int oddsScaled;
+  const BetLegRow({
+    required this.id,
+    required this.betId,
+    required this.position,
+    required this.sport,
+    required this.event,
+    required this.market,
+    required this.selection,
+    required this.oddsScaled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['bet_id'] = Variable<int>(betId);
+    map['position'] = Variable<int>(position);
+    map['sport'] = Variable<String>(sport);
+    map['event'] = Variable<String>(event);
+    map['market'] = Variable<String>(market);
+    map['selection'] = Variable<String>(selection);
+    map['odds_scaled'] = Variable<int>(oddsScaled);
+    return map;
+  }
+
+  BetLegsCompanion toCompanion(bool nullToAbsent) {
+    return BetLegsCompanion(
+      id: Value(id),
+      betId: Value(betId),
+      position: Value(position),
+      sport: Value(sport),
+      event: Value(event),
+      market: Value(market),
+      selection: Value(selection),
+      oddsScaled: Value(oddsScaled),
+    );
+  }
+
+  factory BetLegRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BetLegRow(
+      id: serializer.fromJson<int>(json['id']),
+      betId: serializer.fromJson<int>(json['betId']),
+      position: serializer.fromJson<int>(json['position']),
+      sport: serializer.fromJson<String>(json['sport']),
+      event: serializer.fromJson<String>(json['event']),
+      market: serializer.fromJson<String>(json['market']),
+      selection: serializer.fromJson<String>(json['selection']),
+      oddsScaled: serializer.fromJson<int>(json['oddsScaled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'betId': serializer.toJson<int>(betId),
+      'position': serializer.toJson<int>(position),
+      'sport': serializer.toJson<String>(sport),
+      'event': serializer.toJson<String>(event),
+      'market': serializer.toJson<String>(market),
+      'selection': serializer.toJson<String>(selection),
+      'oddsScaled': serializer.toJson<int>(oddsScaled),
+    };
+  }
+
+  BetLegRow copyWith({
+    int? id,
+    int? betId,
+    int? position,
+    String? sport,
+    String? event,
+    String? market,
+    String? selection,
+    int? oddsScaled,
+  }) => BetLegRow(
+    id: id ?? this.id,
+    betId: betId ?? this.betId,
+    position: position ?? this.position,
+    sport: sport ?? this.sport,
+    event: event ?? this.event,
+    market: market ?? this.market,
+    selection: selection ?? this.selection,
+    oddsScaled: oddsScaled ?? this.oddsScaled,
+  );
+  BetLegRow copyWithCompanion(BetLegsCompanion data) {
+    return BetLegRow(
+      id: data.id.present ? data.id.value : this.id,
+      betId: data.betId.present ? data.betId.value : this.betId,
+      position: data.position.present ? data.position.value : this.position,
+      sport: data.sport.present ? data.sport.value : this.sport,
+      event: data.event.present ? data.event.value : this.event,
+      market: data.market.present ? data.market.value : this.market,
+      selection: data.selection.present ? data.selection.value : this.selection,
+      oddsScaled: data.oddsScaled.present
+          ? data.oddsScaled.value
+          : this.oddsScaled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BetLegRow(')
+          ..write('id: $id, ')
+          ..write('betId: $betId, ')
+          ..write('position: $position, ')
+          ..write('sport: $sport, ')
+          ..write('event: $event, ')
+          ..write('market: $market, ')
+          ..write('selection: $selection, ')
+          ..write('oddsScaled: $oddsScaled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    betId,
+    position,
+    sport,
+    event,
+    market,
+    selection,
+    oddsScaled,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BetLegRow &&
+          other.id == this.id &&
+          other.betId == this.betId &&
+          other.position == this.position &&
+          other.sport == this.sport &&
+          other.event == this.event &&
+          other.market == this.market &&
+          other.selection == this.selection &&
+          other.oddsScaled == this.oddsScaled);
+}
+
+class BetLegsCompanion extends UpdateCompanion<BetLegRow> {
+  final Value<int> id;
+  final Value<int> betId;
+  final Value<int> position;
+  final Value<String> sport;
+  final Value<String> event;
+  final Value<String> market;
+  final Value<String> selection;
+  final Value<int> oddsScaled;
+  const BetLegsCompanion({
+    this.id = const Value.absent(),
+    this.betId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.sport = const Value.absent(),
+    this.event = const Value.absent(),
+    this.market = const Value.absent(),
+    this.selection = const Value.absent(),
+    this.oddsScaled = const Value.absent(),
+  });
+  BetLegsCompanion.insert({
+    this.id = const Value.absent(),
+    required int betId,
+    required int position,
+    required String sport,
+    required String event,
+    required String market,
+    required String selection,
+    required int oddsScaled,
+  }) : betId = Value(betId),
+       position = Value(position),
+       sport = Value(sport),
+       event = Value(event),
+       market = Value(market),
+       selection = Value(selection),
+       oddsScaled = Value(oddsScaled);
+  static Insertable<BetLegRow> custom({
+    Expression<int>? id,
+    Expression<int>? betId,
+    Expression<int>? position,
+    Expression<String>? sport,
+    Expression<String>? event,
+    Expression<String>? market,
+    Expression<String>? selection,
+    Expression<int>? oddsScaled,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (betId != null) 'bet_id': betId,
+      if (position != null) 'position': position,
+      if (sport != null) 'sport': sport,
+      if (event != null) 'event': event,
+      if (market != null) 'market': market,
+      if (selection != null) 'selection': selection,
+      if (oddsScaled != null) 'odds_scaled': oddsScaled,
+    });
+  }
+
+  BetLegsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? betId,
+    Value<int>? position,
+    Value<String>? sport,
+    Value<String>? event,
+    Value<String>? market,
+    Value<String>? selection,
+    Value<int>? oddsScaled,
+  }) {
+    return BetLegsCompanion(
+      id: id ?? this.id,
+      betId: betId ?? this.betId,
+      position: position ?? this.position,
+      sport: sport ?? this.sport,
+      event: event ?? this.event,
+      market: market ?? this.market,
+      selection: selection ?? this.selection,
+      oddsScaled: oddsScaled ?? this.oddsScaled,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (betId.present) {
+      map['bet_id'] = Variable<int>(betId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (sport.present) {
+      map['sport'] = Variable<String>(sport.value);
+    }
+    if (event.present) {
+      map['event'] = Variable<String>(event.value);
+    }
+    if (market.present) {
+      map['market'] = Variable<String>(market.value);
+    }
+    if (selection.present) {
+      map['selection'] = Variable<String>(selection.value);
+    }
+    if (oddsScaled.present) {
+      map['odds_scaled'] = Variable<int>(oddsScaled.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BetLegsCompanion(')
+          ..write('id: $id, ')
+          ..write('betId: $betId, ')
+          ..write('position: $position, ')
+          ..write('sport: $sport, ')
+          ..write('event: $event, ')
+          ..write('market: $market, ')
+          ..write('selection: $selection, ')
+          ..write('oddsScaled: $oddsScaled')
           ..write(')'))
         .toString();
   }
@@ -8695,6 +9256,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $BetsTable bets = $BetsTable(this);
+  late final $BetLegsTable betLegs = $BetLegsTable(this);
   late final $FinancialCategoriesTable financialCategories =
       $FinancialCategoriesTable(this);
   late final $BillsPayableTable billsPayable = $BillsPayableTable(this);
@@ -8718,6 +9280,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final AccountsDao accountsDao = AccountsDao(this as AppDatabase);
   late final BetsDao betsDao = BetsDao(this as AppDatabase);
+  late final BetLegsDao betLegsDao = BetLegsDao(this as AppDatabase);
   late final MovementsDao movementsDao = MovementsDao(this as AppDatabase);
   late final LedgerDao ledgerDao = LedgerDao(this as AppDatabase);
   late final CdbYieldsDao cdbYieldsDao = CdbYieldsDao(this as AppDatabase);
@@ -8750,6 +9313,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     accounts,
     bets,
+    betLegs,
     financialCategories,
     billsPayable,
     billsReceivable,
@@ -9834,6 +10398,7 @@ typedef $$BetsTableCreateCompanionBuilder = BetsCompanion Function({
   Value<int?> cashoutCents,
   Value<int?> resultCents,
   Value<String?> notes,
+  Value<BetType?> betType,
   required DateTime createdAt,
   required DateTime updatedAt,
 });
@@ -9852,6 +10417,7 @@ typedef $$BetsTableUpdateCompanionBuilder = BetsCompanion Function({
   Value<int?> cashoutCents,
   Value<int?> resultCents,
   Value<String?> notes,
+  Value<BetType?> betType,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -9874,6 +10440,25 @@ final class $$BetsTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$BetLegsTable, List<BetLegRow>> _betLegsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.betLegs,
+    aliasName: 'bets__id__bet_legs__bet_id',
+  );
+
+  $$BetLegsTableProcessedTableManager get betLegsRefs {
+    final manager = $$BetLegsTableTableManager(
+      $_db,
+      $_db.betLegs,
+    ).filter((f) => f.betId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_betLegsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
     );
   }
 
@@ -9970,6 +10555,12 @@ class $$BetsTableFilterComposer extends Composer<_$AppDatabase, $BetsTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<BetType?, BetType, String> get betType =>
+      $composableBuilder(
+        column: $table.betType,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -10001,6 +10592,31 @@ class $$BetsTableFilterComposer extends Composer<_$AppDatabase, $BetsTable> {
           ),
     );
     return composer;
+  }
+
+  Expression<bool> betLegsRefs(
+    Expression<bool> Function($$BetLegsTableFilterComposer f) f,
+  ) {
+    final $$BetLegsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.betLegs,
+      getReferencedColumn: (t) => t.betId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BetLegsTableFilterComposer(
+            $db: $db,
+            $table: $db.betLegs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 
   Expression<bool> ledgerEntriesRefs(
@@ -10102,6 +10718,11 @@ class $$BetsTableOrderingComposer extends Composer<_$AppDatabase, $BetsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get betType => $composableBuilder(
+    column: $table.betType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -10192,6 +10813,9 @@ class $$BetsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<BetType?, String> get betType =>
+      $composableBuilder(column: $table.betType, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -10219,6 +10843,31 @@ class $$BetsTableAnnotationComposer
           ),
     );
     return composer;
+  }
+
+  Expression<T> betLegsRefs<T extends Object>(
+    Expression<T> Function($$BetLegsTableAnnotationComposer a) f,
+  ) {
+    final $$BetLegsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.betLegs,
+      getReferencedColumn: (t) => t.betId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BetLegsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.betLegs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 
   Expression<T> ledgerEntriesRefs<T extends Object>(
@@ -10260,7 +10909,11 @@ class $$BetsTableTableManager
           $$BetsTableUpdateCompanionBuilder,
           (BetRow, $$BetsTableReferences),
           BetRow,
-          PrefetchHooks Function({bool accountId, bool ledgerEntriesRefs})
+          PrefetchHooks Function({
+            bool accountId,
+            bool betLegsRefs,
+            bool ledgerEntriesRefs,
+          })
         > {
   $$BetsTableTableManager(_$AppDatabase db, $BetsTable table)
     : super(
@@ -10289,6 +10942,7 @@ class $$BetsTableTableManager
                 Value<int?> cashoutCents = const Value.absent(),
                 Value<int?> resultCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<BetType?> betType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BetsCompanion(
@@ -10306,6 +10960,7 @@ class $$BetsTableTableManager
                 cashoutCents: cashoutCents,
                 resultCents: resultCents,
                 notes: notes,
+                betType: betType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -10325,6 +10980,7 @@ class $$BetsTableTableManager
                 Value<int?> cashoutCents = const Value.absent(),
                 Value<int?> resultCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<BetType?> betType = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => BetsCompanion.insert(
@@ -10342,6 +10998,7 @@ class $$BetsTableTableManager
                 cashoutCents: cashoutCents,
                 resultCents: resultCents,
                 notes: notes,
+                betType: betType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -10354,10 +11011,15 @@ class $$BetsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({accountId = false, ledgerEntriesRefs = false}) {
+              ({
+                accountId = false,
+                betLegsRefs = false,
+                ledgerEntriesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
+                    if (betLegsRefs) db.betLegs,
                     if (ledgerEntriesRefs) db.ledgerEntries,
                   ],
                   addJoins:
@@ -10392,6 +11054,23 @@ class $$BetsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
+                      if (betLegsRefs)
+                        await $_getPrefetchedData<
+                          BetRow,
+                          $BetsTable,
+                          BetLegRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$BetsTableReferences
+                              ._betLegsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$BetsTableReferences(db, table, p0).betLegsRefs,
+                          referencedItemsForCurrentItem: (
+                            item,
+                            referencedItems,
+                          ) => referencedItems.where((e) => e.betId == item.id),
+                          typedResults: items,
+                        ),
                       if (ledgerEntriesRefs)
                         await $_getPrefetchedData<
                           BetRow,
@@ -10432,7 +11111,378 @@ typedef $$BetsTableProcessedTableManager =
       $$BetsTableUpdateCompanionBuilder,
       (BetRow, $$BetsTableReferences),
       BetRow,
-      PrefetchHooks Function({bool accountId, bool ledgerEntriesRefs})
+      PrefetchHooks Function({
+        bool accountId,
+        bool betLegsRefs,
+        bool ledgerEntriesRefs,
+      })
+    >;
+typedef $$BetLegsTableCreateCompanionBuilder = BetLegsCompanion Function({
+  Value<int> id,
+  required int betId,
+  required int position,
+  required String sport,
+  required String event,
+  required String market,
+  required String selection,
+  required int oddsScaled,
+});
+typedef $$BetLegsTableUpdateCompanionBuilder = BetLegsCompanion Function({
+  Value<int> id,
+  Value<int> betId,
+  Value<int> position,
+  Value<String> sport,
+  Value<String> event,
+  Value<String> market,
+  Value<String> selection,
+  Value<int> oddsScaled,
+});
+
+final class $$BetLegsTableReferences
+    extends BaseReferences<_$AppDatabase, $BetLegsTable, BetLegRow> {
+  $$BetLegsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $BetsTable _betIdTable(_$AppDatabase db) =>
+      db.bets.createAlias('bet_legs__bet_id__bets__id');
+
+  $$BetsTableProcessedTableManager get betId {
+    final $_column = $_itemColumn<int>('bet_id')!;
+
+    final manager = $$BetsTableTableManager(
+      $_db,
+      $_db.bets,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_betIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BetLegsTableFilterComposer
+    extends Composer<_$AppDatabase, $BetLegsTable> {
+  $$BetLegsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sport => $composableBuilder(
+    column: $table.sport,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get market => $composableBuilder(
+    column: $table.market,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get selection => $composableBuilder(
+    column: $table.selection,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get oddsScaled => $composableBuilder(
+    column: $table.oddsScaled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$BetsTableFilterComposer get betId {
+    final $$BetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.betId,
+      referencedTable: $db.bets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BetsTableFilterComposer(
+            $db: $db,
+            $table: $db.bets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BetLegsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BetLegsTable> {
+  $$BetLegsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sport => $composableBuilder(
+    column: $table.sport,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get market => $composableBuilder(
+    column: $table.market,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get selection => $composableBuilder(
+    column: $table.selection,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get oddsScaled => $composableBuilder(
+    column: $table.oddsScaled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$BetsTableOrderingComposer get betId {
+    final $$BetsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.betId,
+      referencedTable: $db.bets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BetsTableOrderingComposer(
+            $db: $db,
+            $table: $db.bets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BetLegsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BetLegsTable> {
+  $$BetLegsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get sport =>
+      $composableBuilder(column: $table.sport, builder: (column) => column);
+
+  GeneratedColumn<String> get event =>
+      $composableBuilder(column: $table.event, builder: (column) => column);
+
+  GeneratedColumn<String> get market =>
+      $composableBuilder(column: $table.market, builder: (column) => column);
+
+  GeneratedColumn<String> get selection =>
+      $composableBuilder(column: $table.selection, builder: (column) => column);
+
+  GeneratedColumn<int> get oddsScaled => $composableBuilder(
+    column: $table.oddsScaled,
+    builder: (column) => column,
+  );
+
+  $$BetsTableAnnotationComposer get betId {
+    final $$BetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.betId,
+      referencedTable: $db.bets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.bets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BetLegsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BetLegsTable,
+          BetLegRow,
+          $$BetLegsTableFilterComposer,
+          $$BetLegsTableOrderingComposer,
+          $$BetLegsTableAnnotationComposer,
+          $$BetLegsTableCreateCompanionBuilder,
+          $$BetLegsTableUpdateCompanionBuilder,
+          (BetLegRow, $$BetLegsTableReferences),
+          BetLegRow,
+          PrefetchHooks Function({bool betId})
+        > {
+  $$BetLegsTableTableManager(_$AppDatabase db, $BetLegsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BetLegsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BetLegsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BetLegsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> betId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> sport = const Value.absent(),
+                Value<String> event = const Value.absent(),
+                Value<String> market = const Value.absent(),
+                Value<String> selection = const Value.absent(),
+                Value<int> oddsScaled = const Value.absent(),
+              }) => BetLegsCompanion(
+                id: id,
+                betId: betId,
+                position: position,
+                sport: sport,
+                event: event,
+                market: market,
+                selection: selection,
+                oddsScaled: oddsScaled,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int betId,
+                required int position,
+                required String sport,
+                required String event,
+                required String market,
+                required String selection,
+                required int oddsScaled,
+              }) => BetLegsCompanion.insert(
+                id: id,
+                betId: betId,
+                position: position,
+                sport: sport,
+                event: event,
+                market: market,
+                selection: selection,
+                oddsScaled: oddsScaled,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$BetLegsTable, BetLegRow>(table),
+                  $$BetLegsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({betId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (betId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.betId,
+                        referencedTable: $$BetLegsTableReferences._betIdTable(
+                          db,
+                        ),
+                        referencedColumn: $$BetLegsTableReferences
+                            ._betIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BetLegsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BetLegsTable,
+      BetLegRow,
+      $$BetLegsTableFilterComposer,
+      $$BetLegsTableOrderingComposer,
+      $$BetLegsTableAnnotationComposer,
+      $$BetLegsTableCreateCompanionBuilder,
+      $$BetLegsTableUpdateCompanionBuilder,
+      (BetLegRow, $$BetLegsTableReferences),
+      BetLegRow,
+      PrefetchHooks Function({bool betId})
     >;
 typedef $$FinancialCategoriesTableCreateCompanionBuilder =
     FinancialCategoriesCompanion Function({
@@ -17599,6 +18649,8 @@ class $AppDatabaseManager {
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
   $$BetsTableTableManager get bets => $$BetsTableTableManager(_db, _db.bets);
+  $$BetLegsTableTableManager get betLegs =>
+      $$BetLegsTableTableManager(_db, _db.betLegs);
   $$FinancialCategoriesTableTableManager get financialCategories =>
       $$FinancialCategoriesTableTableManager(_db, _db.financialCategories);
   $$BillsPayableTableTableManager get billsPayable =>

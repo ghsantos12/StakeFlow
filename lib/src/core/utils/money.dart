@@ -120,4 +120,14 @@ class DecimalOdds {
   static int potentialReturn(int stakeCents, int oddsScaled) {
     return (stakeCents * oddsScaled / scale).round();
   }
+
+  /// Odd combinada de uma aposta múltipla = produto das odds decimais de
+  /// cada seleção (ex.: 1.80 * 2.10 * 1.50 = 5.67).
+  static int combine(Iterable<int> legOddsScaled) {
+    var result = 1.0;
+    for (final odds in legOddsScaled) {
+      result *= odds / scale;
+    }
+    return (result * scale).round();
+  }
 }
