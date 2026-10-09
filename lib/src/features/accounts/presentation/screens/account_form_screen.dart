@@ -28,6 +28,10 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   AccountType _type = AccountType.bookmaker;
   CdbAccountingType _cdbAccountingType = CdbAccountingType.net;
   DateTime _cdbTrackingStart = DateTime.now();
+  BankAccountKind _bankAccountKind = BankAccountKind.checking;
+  int _colorValue = 0xFF2563EB;
+
+  static const _colorOptions = [0xFF2563EB, 0xFFDC2626, 0xFF16A34A, 0xFFEA580C, 0xFF9333EA, 0xFF0891B2];
 
   bool _loaded = false;
   bool _saving = false;
@@ -52,6 +56,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     _institutionController.text = account.institution ?? '';
     _initialBalanceController.text = (account.initialBalanceCents / 100).toStringAsFixed(2);
     _type = account.type;
+    if (account.bankAccountKind != null) _bankAccountKind = account.bankAccountKind!;
+    if (account.colorValue != null) _colorValue = account.colorValue!;
     if (account.cdiPercent != null) _cdiPercentController.text = account.cdiPercent!.toStringAsFixed(0);
     if (account.cdbAccountingType != null) _cdbAccountingType = account.cdbAccountingType!;
     if (account.cdbTrackingStartDate != null) _cdbTrackingStart = account.cdbTrackingStartDate!;
@@ -106,6 +112,39 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     TextFormField(
                       controller: _institutionController,
                       decoration: const InputDecoration(labelText: 'Instituição financeira (opcional)'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<BankAccountKind>(
+                      initialValue: _bankAccountKind,
+                      decoration: const InputDecoration(labelText: 'Tipo de conta'),
+                      items: [
+                        for (final k in BankAccountKind.values)
+                          DropdownMenuItem(value: k, child: Text(k.label)),
+                      ],
+                      onChanged: (v) => setState(() => _bankAccountKind = v ?? _bankAccountKind),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Cor: '),
+                        const SizedBox(width: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final c in _colorOptions)
+                              GestureDetector(
+                                onTap: () => setState(() => _colorValue = c),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Color(c),
+                                  child: _colorValue == c
+                                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                      : null,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -202,6 +241,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
           type: _type,
           institution: _institutionController.text.trim().isEmpty ? null : _institutionController.text.trim(),
           initialBalanceCents: Money.parseToCents(_initialBalanceController.text) ?? 0,
+          bankAccountKind: _type == AccountType.bank ? _bankAccountKind : null,
+          colorValue: _type == AccountType.bank ? _colorValue : null,
           cdiPercent: _type == AccountType.bank ? double.tryParse(_cdiPercentController.text.replaceAll(',', '.')) : null,
           cdbAccountingType: _type == AccountType.bank ? _cdbAccountingType : null,
           cdbTrackingStartDate: _type == AccountType.bank ? _cdbTrackingStart : null,
@@ -214,6 +255,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
         await service.updateAccount(existing.copyWith(
           name: _nameController.text.trim(),
           institution: Value(_institutionController.text.trim().isEmpty ? null : _institutionController.text.trim()),
+          bankAccountKind: Value(_type == AccountType.bank ? _bankAccountKind : null),
+          colorValue: Value(_type == AccountType.bank ? _colorValue : null),
           cdiPercent: Value(_type == AccountType.bank
               ? double.tryParse(_cdiPercentController.text.replaceAll(',', '.'))
               : null),

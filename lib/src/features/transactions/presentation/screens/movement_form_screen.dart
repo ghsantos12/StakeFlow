@@ -105,6 +105,10 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
       case MovementType.adjustment:
         return all;
       case MovementType.externalDeposit:
+      case MovementType.income:
+      case MovementType.expense:
+      case MovementType.yield:
+        // Tipos exclusivos do módulo financeiro, não selecionáveis nesta tela.
         return const [];
     }
   }
@@ -121,6 +125,9 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
         return all;
       case MovementType.adjustment:
       case MovementType.externalWithdrawal:
+      case MovementType.income:
+      case MovementType.expense:
+      case MovementType.yield:
         return const [];
     }
   }
@@ -166,7 +173,7 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
             initialValue: _type,
             decoration: const InputDecoration(labelText: 'Tipo de movimentação'),
             items: [
-              for (final t in MovementType.values)
+              for (final t in kBettingMovementTypes)
                 DropdownMenuItem(value: t, child: Text(movementTypeLabel(t))),
             ],
             onChanged: (v) => setState(() {

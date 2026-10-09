@@ -39,6 +39,14 @@ class AccountService {
 
   Future<AccountRow?> getById(int id) => _db.accountsDao.getById(id);
 
+  /// Contas bancárias (tipo [AccountType.bank]) — usado pelo módulo
+  /// financeiro, mas compartilha exatamente as mesmas linhas da conta
+  /// bancária do módulo de apostas, sem duplicação.
+  Stream<List<AccountRow>> watchBankAccounts({bool includeArchived = false}) {
+    return watchAccounts(includeArchived: includeArchived)
+        .map((list) => list.where((a) => a.type == AccountType.bank).toList());
+  }
+
   Stream<AccountRow?> watchById(int id) => _db.accountsDao.watchById(id);
 
   /// Saldo calculado = saldo inicial + soma de todos os lançamentos do
@@ -93,6 +101,8 @@ class AccountService {
     CdbAccountingType? cdbAccountingType,
     DateTime? cdbTrackingStartDate,
     int cdbAccumulatedBeforeTrackingCents = 0,
+    BankAccountKind? bankAccountKind,
+    int? colorValue,
   }) {
     if (name.trim().isEmpty) {
       throw ValidationException('Informe um nome para a conta.');
@@ -107,6 +117,8 @@ class AccountService {
       cdbAccountingType: Value(cdbAccountingType),
       cdbTrackingStartDate: Value(cdbTrackingStartDate),
       cdbAccumulatedBeforeTrackingCents: Value(cdbAccumulatedBeforeTrackingCents),
+      bankAccountKind: Value(bankAccountKind),
+      colorValue: Value(colorValue),
     ));
   }
 

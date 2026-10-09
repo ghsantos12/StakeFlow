@@ -68,6 +68,10 @@ class LedgerDao extends DatabaseAccessor<AppDatabase> with _$LedgerDaoMixin {
     return (delete(ledgerEntries)..where((t) => t.cdbYieldId.equals(cdbYieldId))).go();
   }
 
+  Future<List<LedgerEntryRow>> getForCdbYield(int cdbYieldId) {
+    return (select(ledgerEntries)..where((t) => t.cdbYieldId.equals(cdbYieldId))).get();
+  }
+
   Future<int> deleteForAccount(int accountId) {
     return (delete(ledgerEntries)..where((t) => t.accountId.equals(accountId))).go();
   }

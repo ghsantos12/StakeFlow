@@ -52,3 +52,18 @@ class BiometricEnabledNotifier extends Notifier<bool> {
 
 final biometricEnabledProvider =
     NotifierProvider<BiometricEnabledNotifier, bool>(BiometricEnabledNotifier.new);
+
+class LastModuleNotifier extends Notifier<String> {
+  @override
+  String build() => ref.watch(settingsRepositoryProvider).lastModule;
+
+  Future<void> set(String module) async {
+    if (state == module) return;
+    await ref.read(settingsRepositoryProvider).setLastModule(module);
+    state = module;
+  }
+}
+
+/// 'apostas' ou 'financas' — lembrado para abrir direto no último módulo
+/// acessado na próxima vez que o app iniciar.
+final lastModuleProvider = NotifierProvider<LastModuleNotifier, String>(LastModuleNotifier.new);

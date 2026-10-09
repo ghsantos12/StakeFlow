@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/widgets/update_dialog.dart';
 import '../providers/service_providers.dart';
+import '../providers/settings_providers.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -17,6 +18,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    ref.read(lastModuleProvider.notifier).set('apostas');
     // Checagem única por sessão, assim que o app abre. Silenciosa e sem
     // bloquear a UI — se não houver internet ou a release mais recente não
     // for mais nova, simplesmente não acontece nada.

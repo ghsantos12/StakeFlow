@@ -4,6 +4,7 @@ import 'accounts_table.dart';
 import 'bets_table.dart';
 import 'movements_table.dart';
 import 'cdb_yields_table.dart';
+import 'credit_card_bill_payments_table.dart';
 
 /// Lançamento atômico no extrato (ledger) de uma conta. Toda alteração de
 /// saldo do app passa por esta tabela, o que garante que:
@@ -26,6 +27,8 @@ class LedgerEntries extends Table {
   IntColumn get betId => integer().nullable().references(Bets, #id)();
   IntColumn get movementId => integer().nullable().references(Movements, #id)();
   IntColumn get cdbYieldId => integer().nullable().references(CdbYields, #id)();
+  IntColumn get creditCardBillPaymentId =>
+      integer().nullable().references(CreditCardBillPayments, #id)();
 
   /// Agrupa as duas pontas (débito/crédito) de uma transferência.
   TextColumn get transferGroupId => text().nullable()();

@@ -10,6 +10,7 @@ Future<void> main() async {
 
   final settingsRepository = await SettingsRepository.create();
   final database = AppDatabase();
+  final initialLocation = settingsRepository.lastModule == 'financas' ? '/financas' : '/';
 
   runApp(
     ProviderScope(
@@ -17,7 +18,7 @@ Future<void> main() async {
         databaseProvider.overrideWithValue(database),
         settingsRepositoryProvider.overrideWithValue(settingsRepository),
       ],
-      child: const StakeFlowApp(),
+      child: StakeFlowApp(initialLocation: initialLocation),
     ),
   );
 }

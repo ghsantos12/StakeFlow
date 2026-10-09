@@ -34,6 +34,10 @@ class MovementService {
     required DateTime occurredAt,
     String? description,
     String? adjustmentReason,
+    int? categoryId,
+    bool reconciled = false,
+    int? payableId,
+    int? receivableId,
   }) async {
     _validate(
       type: type,
@@ -71,6 +75,10 @@ class MovementService {
           occurredAt: occurredAt,
           description: Value(description),
           adjustmentReason: Value(adjustmentReason),
+          categoryId: Value(categoryId),
+          reconciled: Value(reconciled),
+          payableId: Value(payableId),
+          receivableId: Value(receivableId),
           createdAt: now,
           updatedAt: now,
         ));
@@ -87,6 +95,10 @@ class MovementService {
           occurredAt: occurredAt,
           description: Value(description),
           adjustmentReason: Value(adjustmentReason),
+          categoryId: Value(categoryId),
+          reconciled: reconciled,
+          payableId: Value(payableId),
+          receivableId: Value(receivableId),
           updatedAt: now,
         ));
       }
@@ -165,11 +177,14 @@ class MovementService {
         if (amountCents == 0) throw ValidationException('O valor do ajuste não pode ser zero.');
         return;
       case MovementType.externalDeposit:
+      case MovementType.income:
+      case MovementType.yield:
         if (destinationAccountId == null) {
           throw ValidationException('Selecione a conta de destino.');
         }
         break;
       case MovementType.externalWithdrawal:
+      case MovementType.expense:
         if (sourceAccountId == null) {
           throw ValidationException('Selecione a conta de origem.');
         }
@@ -218,6 +233,12 @@ class MovementService {
         return LedgerEntryType.transferBetweenAccounts;
       case MovementType.adjustment:
         return LedgerEntryType.adjustment;
+      case MovementType.income:
+        return LedgerEntryType.income;
+      case MovementType.expense:
+        return LedgerEntryType.expense;
+      case MovementType.yield:
+        return LedgerEntryType.yield;
     }
   }
 }

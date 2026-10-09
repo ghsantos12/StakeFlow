@@ -5,6 +5,7 @@ import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../data/database/database.dart';
+import '../../../../domain/models/enums.dart';
 import '../../../../providers/data_providers.dart';
 import '../widgets/movement_type_label.dart';
 
@@ -19,7 +20,16 @@ class MovementsListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Movimentações')),
       body: movementsAsync.when(
-        data: (movements) {
+        data: (allMovements) {
+          // Receita/despesa/rendimento são lançamentos exclusivos do módulo
+          // financeiro — não aparecem aqui para não misturar despesas
+          // pessoais com as movimentações de apostas.
+          final movements = allMovements
+              .where((m) =>
+                  m.type != MovementType.income &&
+                  m.type != MovementType.expense &&
+                  m.type != MovementType.yield)
+              .toList();
           if (movements.isEmpty) {
             return const EmptyState(
               icon: Icons.swap_horiz_outlined,

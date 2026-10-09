@@ -177,5 +177,13 @@ String ledgerTypeLabel(LedgerEntryType type) {
       return 'Rendimento CDB';
     case LedgerEntryType.fee:
       return 'Taxa';
+    case LedgerEntryType.income:
+      return 'Receita';
+    case LedgerEntryType.expense:
+      return 'Despesa';
+    case LedgerEntryType.yield:
+      return 'Rendimento';
+    case LedgerEntryType.creditCardBillPayment:
+      return 'Pagamento de fatura';
   }
 }

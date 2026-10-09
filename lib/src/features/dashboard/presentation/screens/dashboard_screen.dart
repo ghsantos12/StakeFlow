@@ -5,6 +5,7 @@ import '../../../../core/widgets/money_text.dart';
 import '../../../../core/widgets/section_card.dart';
 import '../../../../core/widgets/range_filter_bar.dart';
 import '../../../../providers/data_providers.dart';
+import '../../../../providers/settings_providers.dart';
 import '../../../../domain/services/analytics_service.dart';
 import '../widgets/patrimony_chart.dart';
 
@@ -17,7 +18,19 @@ class DashboardScreen extends ConsumerWidget {
     final patrimonyAsync = ref.watch(dashboardPatrimonyHistoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('StakeFlow')),
+      appBar: AppBar(
+        title: const Text('StakeFlow'),
+        actions: [
+          IconButton(
+            tooltip: 'Trocar para Gestão Financeira',
+            icon: const Icon(Icons.swap_horiz),
+            onPressed: () async {
+              await ref.read(lastModuleProvider.notifier).set('financas');
+              if (context.mounted) context.go('/financas');
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/bets/new'),
         icon: const Icon(Icons.add),

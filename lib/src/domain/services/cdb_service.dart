@@ -8,6 +8,11 @@ import '../models/exceptions.dart';
 /// bancária. Cada rendimento lançado aqui é um fato consumado (o banco já
 /// creditou o valor), diferente das estimativas de [CdbEstimationService],
 /// que são apenas informativas e nunca tocam o saldo real.
+// `yield` é palavra reservada dentro de corpos de função async/generator,
+// então o valor do enum precisa ser capturado aqui fora para ser usado
+// dentro dos métodos async de [CdbYieldService].
+const MovementType _yieldMovementType = MovementType.yield;
+
 class CdbYieldService {
   CdbYieldService(this._db);
   final AppDatabase _db;
@@ -44,11 +49,26 @@ class CdbYieldService {
         description: Value(description),
         createdAt: now,
       ));
+      // Também gera uma Movement (tipo yield) ligada ao mesmo lançamento do
+      // ledger, para que este mesmo rendimento apareça como receita no
+      // extrato/relatórios do módulo financeiro — sem duplicar o efeito no
+      // saldo, já que há só um lançamento no ledger (vinculado a ambos os
+      // registros).
+      final movementId = await _db.movementsDao.insertMovement(MovementsCompanion.insert(
+        type: _yieldMovementType,
+        destinationAccountId: Value(accountId),
+        amountCents: amountCents,
+        occurredAt: date,
+        description: Value(description ?? 'Rendimento CDB'),
+        createdAt: now,
+        updatedAt: now,
+      ));
       await _db.ledgerDao.insertEntry(LedgerEntriesCompanion.insert(
         accountId: accountId,
         occurredAt: date,
         type: LedgerEntryType.cdbYield,
         amountCents: amountCents,
+        movementId: Value(movementId),
         cdbYieldId: Value(id),
         description: Value(description ?? 'Rendimento CDB'),
         createdAt: now,
@@ -59,8 +79,11 @@ class CdbYieldService {
 
   Future<void> deleteYield(int id) async {
     await _db.transaction(() async {
+      final entries = await _db.ledgerDao.getForCdbYield(id);
+      final movementId = entries.where((e) => e.movementId != null).firstOrNull?.movementId;
       await _db.ledgerDao.deleteForCdbYield(id);
       await _db.cdbYieldsDao.deleteYield(id);
+      if (movementId != null) await _db.movementsDao.deleteMovement(movementId);
     });
   }
 }

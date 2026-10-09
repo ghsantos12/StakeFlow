@@ -15,6 +15,12 @@ String movementTypeLabel(MovementType type) {
       return 'Transferência entre contas';
     case MovementType.adjustment:
       return 'Ajuste de saldo';
+    case MovementType.income:
+      return 'Receita';
+    case MovementType.expense:
+      return 'Despesa';
+    case MovementType.yield:
+      return 'Rendimento';
   }
 }
 
@@ -32,5 +38,11 @@ IconData movementTypeIcon(MovementType type) {
       return Icons.swap_horiz;
     case MovementType.adjustment:
       return Icons.tune;
+    case MovementType.income:
+      return Icons.trending_up;
+    case MovementType.expense:
+      return Icons.trending_down;
+    case MovementType.yield:
+      return Icons.savings_outlined;
   }
 }

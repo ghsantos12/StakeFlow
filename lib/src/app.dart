@@ -2,16 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/settings_providers.dart';
 import 'routing/app_router.dart';
 
-class StakeFlowApp extends ConsumerWidget {
-  const StakeFlowApp({super.key});
+class StakeFlowApp extends ConsumerStatefulWidget {
+  const StakeFlowApp({super.key, required this.initialLocation});
+
+  final String initialLocation;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StakeFlowApp> createState() => _StakeFlowAppState();
+}
+
+class _StakeFlowAppState extends ConsumerState<StakeFlowApp> {
+  late final GoRouter _router = createAppRouter(initialLocation: widget.initialLocation);
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
@@ -27,7 +37,7 @@ class StakeFlowApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      routerConfig: appRouter,
+      routerConfig: _router,
       builder: (context, child) => _AppLockGate(child: child ?? const SizedBox.shrink()),
     );
   }

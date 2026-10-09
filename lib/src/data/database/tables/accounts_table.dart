@@ -16,4 +16,12 @@ class Accounts extends Table {
   TextColumn get cdbAccountingType => textEnum<CdbAccountingType>().nullable()();
   DateTimeColumn get cdbTrackingStartDate => dateTime().nullable()();
   IntColumn get cdbAccumulatedBeforeTrackingCents => integer().withDefault(const Constant(0))();
+
+  /// Subtipo de conta bancária (corrente, poupança, dinheiro em espécie...)
+  /// usado pelo módulo de gestão financeira pessoal. Nulo para contas
+  /// criadas antes da existência desse módulo ou para casas de apostas.
+  TextColumn get bankAccountKind => textEnum<BankAccountKind>().nullable()();
+
+  /// Cor de identificação visual da conta (módulo financeiro).
+  IntColumn get colorValue => integer().nullable()();
 }

@@ -19,6 +19,7 @@ class SettingsRepository {
   static const _kAnnualCdiRate = 'annual_cdi_rate';
   static const _kBiometricEnabled = 'biometric_enabled';
   static const _kPinHash = 'pin_hash';
+  static const _kLastModule = 'last_module';
 
   static Future<SettingsRepository> create() async {
     final prefs = await SharedPreferences.getInstance();
@@ -81,6 +82,14 @@ class SettingsRepository {
     if (hash == null) return false;
     final candidate = sha256.convert(utf8.encode(pin)).toString();
     return candidate == hash;
+  }
+
+  /// Último módulo acessado ('apostas' ou 'financas'), usado para abrir
+  /// direto nele na próxima vez que o app for iniciado.
+  String get lastModule => _prefs.getString(_kLastModule) ?? 'apostas';
+
+  Future<void> setLastModule(String module) async {
+    await _prefs.setString(_kLastModule, module);
   }
 
   Future<void> clearAll() async {
