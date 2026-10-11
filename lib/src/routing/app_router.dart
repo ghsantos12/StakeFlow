@@ -13,6 +13,7 @@ import '../features/accounts/presentation/screens/account_form_screen.dart';
 import '../features/accounts/presentation/screens/account_detail_screen.dart';
 import '../features/cdb/presentation/screens/cdb_yields_screen.dart';
 import '../features/finance_dashboard/presentation/screens/financial_dashboard_screen.dart';
+import '../features/finance_dashboard/presentation/screens/financial_dashboard_detail_screen.dart';
 import '../features/finance_transactions/presentation/screens/financial_transactions_screen.dart';
 import '../features/finance_transactions/presentation/screens/financial_transaction_form_screen.dart';
 import '../features/finance_credit_cards/presentation/screens/credit_cards_list_screen.dart';
@@ -102,7 +103,20 @@ GoRouter createAppRouter({required String initialLocation}) {
         builder: (context, state, navigationShell) => FinanceShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(routes: [
-            GoRoute(path: '/financas', builder: (context, state) => const FinancialDashboardScreen()),
+            GoRoute(
+              path: '/financas',
+              builder: (context, state) => const FinancialDashboardScreen(),
+              routes: [
+                GoRoute(
+                  path: 'detalhe/:metric',
+                  builder: (context, state) {
+                    final metric = dashboardMetricFromName(state.pathParameters['metric']!) ??
+                        DashboardMetric.balance;
+                    return FinancialDashboardDetailScreen(metric: metric);
+                  },
+                ),
+              ],
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

@@ -125,31 +125,37 @@ class _DashboardGrid extends StatelessWidget {
           label: 'Saldo total das contas',
           icon: Icons.account_balance_wallet_outlined,
           value: MoneyText(s.totalBalanceCents, style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/balance'),
         ),
         IndicatorTile(
           label: 'Receitas do mês',
           icon: Icons.trending_up,
           value: MoneyText(s.monthIncomeCents, signed: true, style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/income'),
         ),
         IndicatorTile(
           label: 'Despesas do mês',
           icon: Icons.trending_down,
           value: Text('-${Money.format(s.monthExpenseCents)}', style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/expense'),
         ),
         IndicatorTile(
           label: 'Contas a pagar',
           icon: Icons.event_busy_outlined,
           value: Text(Money.format(s.totalPayableCents), style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/payable'),
         ),
         IndicatorTile(
           label: 'Contas a receber',
           icon: Icons.event_available_outlined,
           value: Text(Money.format(s.totalReceivableCents), style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/receivable'),
         ),
         IndicatorTile(
           label: 'Faturas em aberto',
           icon: Icons.credit_card_outlined,
           value: Text(Money.format(s.openCardBillsCents), style: const TextStyle(fontSize: 20)),
+          onTap: () => context.push('/financas/detalhe/cardBills'),
         ),
       ],
     );

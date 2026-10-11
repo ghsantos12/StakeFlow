@@ -11,6 +11,31 @@ class CardSpendingTotal {
   final int totalCents;
 }
 
+class DuePayableBill {
+  const DuePayableBill({required this.bill, required this.remainingCents});
+  final BillPayableRow bill;
+  final int remainingCents;
+}
+
+class DueReceivableBill {
+  const DueReceivableBill({required this.bill, required this.remainingCents});
+  final BillReceivableRow bill;
+  final int remainingCents;
+}
+
+class DueCardBill {
+  const DueCardBill({
+    required this.cardId,
+    required this.cardName,
+    required this.bill,
+    required this.remainingCents,
+  });
+  final int cardId;
+  final String cardName;
+  final CreditCardBillRow bill;
+  final int remainingCents;
+}
+
 class FinancialDashboardSnapshot {
   const FinancialDashboardSnapshot({
     required this.totalBalanceCents,
@@ -102,13 +127,71 @@ class FinancialAnalyticsService {
     return result;
   }
 
+  /// Contas a pagar pendentes (não canceladas, com saldo restante) — a
+  /// mesma lista que compõe o total de "Contas a pagar" do dashboard, para
+  /// a tela de detalhe mostrar exatamente o que está sendo somado.
+  Future<List<DuePayableBill>> duePayables({bool Function(DateTime dueDate)? dueDateFilter}) async {
+    final payables = await _db.billsPayableDao.getAll();
+    final movements = await _db.movementsDao.getAll();
+    final result = <DuePayableBill>[];
+    for (final bill in payables) {
+      if (bill.cancelled) continue;
+      if (dueDateFilter != null && !dueDateFilter(bill.dueDate)) continue;
+      final paid = movements.where((m) => m.payableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
+      final remaining = bill.amountCents - paid;
+      if (remaining > 0) result.add(DuePayableBill(bill: bill, remainingCents: remaining));
+    }
+    return result;
+  }
+
+  /// Idem para contas a receber.
+  Future<List<DueReceivableBill>> dueReceivables({bool Function(DateTime dueDate)? dueDateFilter}) async {
+    final receivables = await _db.billsReceivableDao.getAll();
+    final movements = await _db.movementsDao.getAll();
+    final result = <DueReceivableBill>[];
+    for (final bill in receivables) {
+      if (bill.cancelled) continue;
+      if (dueDateFilter != null && !dueDateFilter(bill.dueDate)) continue;
+      final received = movements.where((m) => m.receivableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
+      final remaining = bill.amountCents - received;
+      if (remaining > 0) result.add(DueReceivableBill(bill: bill, remainingCents: remaining));
+    }
+    return result;
+  }
+
+  /// Faturas de cartão com saldo restante (qualquer status, incluindo a
+  /// fatura atual ainda aberta) — a mesma lista que compõe "Faturas em
+  /// aberto" e também entra em "Contas a pagar".
+  Future<List<DueCardBill>> dueCardBills({bool Function(DateTime dueDate)? dueDateFilter}) async {
+    final cards = await _db.creditCardsDao.getAll(includeArchived: true);
+    final namesById = {for (final c in cards) c.id: c.name};
+    final bills = await _db.creditCardBillsDao.getAll();
+    final result = <DueCardBill>[];
+    for (final bill in bills) {
+      if (dueDateFilter != null && !dueDateFilter(bill.dueDate)) continue;
+      final installments = await _db.cardInstallmentsDao.getForBill(bill.id);
+      final total = installments.fold<int>(0, (s, i) => s + i.amountCents);
+      final payments = await _db.creditCardBillPaymentsDao.getForBill(bill.id);
+      final paid = payments.fold<int>(0, (s, p) => s + p.amountCents);
+      final remaining = total - paid;
+      if (remaining > 0) {
+        result.add(DueCardBill(
+          cardId: bill.cardId,
+          cardName: namesById[bill.cardId] ?? '—',
+          bill: bill,
+          remainingCents: remaining,
+        ));
+      }
+    }
+    return result;
+  }
+
   /// [dueDateFilter], quando informado, restringe contas a pagar/receber e
   /// faturas de cartão às que vencem num período específico (ex.: mês
   /// atual, mês que vem) — nulo considera todas, sem limite de data.
   Future<FinancialDashboardSnapshot> dashboardSnapshot({bool Function(DateTime dueDate)? dueDateFilter}) async {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
-    bool matchesDue(DateTime dueDate) => dueDateFilter?.call(dueDate) ?? true;
 
     final accounts = await _accountService.getFinancialAccounts();
     var totalBalance = 0;
@@ -121,34 +204,14 @@ class FinancialAnalyticsService {
     final monthIncome = thisMonth.fold<int>(0, (s, m) => s + m.incomeCents);
     final monthExpense = thisMonth.fold<int>(0, (s, m) => s + m.expenseCents);
 
-    final payables = await _db.billsPayableDao.getAll();
-    var totalPayable = 0;
-    for (final bill in payables.where((b) => !b.cancelled && matchesDue(b.dueDate))) {
-      final movements = await _db.movementsDao.getAll();
-      final paid = movements.where((m) => m.payableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
-      final remaining = bill.amountCents - paid;
-      if (remaining > 0) totalPayable += remaining;
-    }
+    final payables = await duePayables(dueDateFilter: dueDateFilter);
+    final totalPayable = payables.fold<int>(0, (s, p) => s + p.remainingCents);
 
-    final receivables = await _db.billsReceivableDao.getAll();
-    var totalReceivable = 0;
-    for (final bill in receivables.where((b) => !b.cancelled && matchesDue(b.dueDate))) {
-      final movements = await _db.movementsDao.getAll();
-      final received = movements.where((m) => m.receivableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
-      final remaining = bill.amountCents - received;
-      if (remaining > 0) totalReceivable += remaining;
-    }
+    final receivables = await dueReceivables(dueDateFilter: dueDateFilter);
+    final totalReceivable = receivables.fold<int>(0, (s, r) => s + r.remainingCents);
 
-    final bills = await _db.creditCardBillsDao.getAll();
-    var openCardBills = 0;
-    for (final bill in bills.where((b) => matchesDue(b.dueDate))) {
-      final installments = await _db.cardInstallmentsDao.getForBill(bill.id);
-      final total = installments.fold<int>(0, (s, i) => s + i.amountCents);
-      final payments = await _db.creditCardBillPaymentsDao.getForBill(bill.id);
-      final paid = payments.fold<int>(0, (s, p) => s + p.amountCents);
-      final remaining = total - paid;
-      if (remaining > 0) openCardBills += remaining;
-    }
+    final cardBills = await dueCardBills(dueDateFilter: dueDateFilter);
+    final openCardBills = cardBills.fold<int>(0, (s, c) => s + c.remainingCents);
 
     return FinancialDashboardSnapshot(
       totalBalanceCents: totalBalance,

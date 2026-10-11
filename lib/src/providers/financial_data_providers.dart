@@ -3,6 +3,7 @@ import 'core_providers.dart';
 import 'service_providers.dart';
 import 'data_providers.dart';
 import '../data/database/database.dart';
+import '../domain/models/enums.dart';
 import '../domain/services/forecast_service.dart';
 import '../domain/services/financial_analytics_service.dart';
 import '../domain/services/financial_analytics_calculations.dart';
@@ -75,6 +76,42 @@ final financialDashboardSnapshotProvider = FutureProvider<FinancialDashboardSnap
   ref.watch(dbChangesProvider);
   final filter = ref.watch(billsDateFilterProvider);
   return ref.watch(financialAnalyticsServiceProvider).dashboardSnapshot(dueDateFilter: filter.matches);
+});
+
+/// Itens que compõem cada card do dashboard financeiro — usados pelas
+/// telas de detalhe abertas ao tocar um card, para mostrar exatamente o
+/// que está sendo contabilizado em cada total.
+final dashboardDuePayablesProvider = FutureProvider<List<DuePayableBill>>((ref) async {
+  ref.watch(dbChangesProvider);
+  final filter = ref.watch(billsDateFilterProvider);
+  return ref.watch(financialAnalyticsServiceProvider).duePayables(dueDateFilter: filter.matches);
+});
+
+final dashboardDueReceivablesProvider = FutureProvider<List<DueReceivableBill>>((ref) async {
+  ref.watch(dbChangesProvider);
+  final filter = ref.watch(billsDateFilterProvider);
+  return ref.watch(financialAnalyticsServiceProvider).dueReceivables(dueDateFilter: filter.matches);
+});
+
+final dashboardDueCardBillsProvider = FutureProvider<List<DueCardBill>>((ref) async {
+  ref.watch(dbChangesProvider);
+  final filter = ref.watch(billsDateFilterProvider);
+  return ref.watch(financialAnalyticsServiceProvider).dueCardBills(dueDateFilter: filter.matches);
+});
+
+/// Movimentações de receita/despesa do mês atual (contas do módulo
+/// financeiro), para o detalhe dos cards "Receitas do mês"/"Despesas do
+/// mês" — sempre o mês corrente, independente do filtro de vencimento.
+final dashboardMonthMovementsProvider = FutureProvider.family<List<MovementRow>, MovementType>((ref, type) async {
+  ref.watch(dbChangesProvider);
+  final now = DateTime.now();
+  final monthStart = DateTime(now.year, now.month, 1);
+  final financialAccountIds = (await ref.watch(financialAccountsStreamProvider.future)).map((a) => a.id).toSet();
+  final movements = await ref.watch(movementServiceProvider).getAll();
+  return filterByFinancialAccounts(movements, financialAccountIds)
+      .where((m) => m.type == type && !m.occurredAt.isBefore(monthStart) && !m.occurredAt.isAfter(now))
+      .toList()
+    ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 });
 
 final financialReportsRangeProvider = NotifierProvider<RangeFilterNotifier, RangeFilterState>(
