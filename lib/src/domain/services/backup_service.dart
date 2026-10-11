@@ -205,6 +205,9 @@ class BackupService {
         'cdbAccountingType': a.cdbAccountingType?.name,
         'cdbTrackingStartDate': a.cdbTrackingStartDate?.toIso8601String(),
         'cdbAccumulatedBeforeTrackingCents': a.cdbAccumulatedBeforeTrackingCents,
+        'bankAccountKind': a.bankAccountKind?.name,
+        'colorValue': a.colorValue,
+        'bettingFundsOnly': a.bettingFundsOnly,
       };
 
   AccountsCompanion _accountFromJson(Map<String, dynamic> j) => AccountsCompanion.insert(
@@ -223,6 +226,10 @@ class BackupService {
             ? DateTime.parse(j['cdbTrackingStartDate'] as String)
             : null),
         cdbAccumulatedBeforeTrackingCents: Value(j['cdbAccumulatedBeforeTrackingCents'] as int? ?? 0),
+        bankAccountKind:
+            Value(j['bankAccountKind'] != null ? BankAccountKind.values.byName(j['bankAccountKind'] as String) : null),
+        colorValue: Value(j['colorValue'] as int?),
+        bettingFundsOnly: Value(j['bettingFundsOnly'] as bool? ?? false),
       );
 
   Map<String, dynamic> _betToJson(BetRow b) => {

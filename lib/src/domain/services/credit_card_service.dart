@@ -179,6 +179,63 @@ class CreditCardService {
     });
   }
 
+  /// Edita descrição/categoria/observações do lançamento (compra) — afeta
+  /// todas as parcelas, já que esses dados não são duplicados por parcela.
+  /// Não re-divide o valor entre as parcelas; para corrigir o valor de uma
+  /// parcela específica, use [updateInstallmentAmount].
+  Future<void> updateTransactionInfo({
+    required int transactionId,
+    required String description,
+    int? categoryId,
+    String? notes,
+  }) async {
+    if (description.trim().isEmpty) throw ValidationException('Informe uma descrição.');
+    final existing = await _db.cardTransactionsDao.getById(transactionId);
+    if (existing == null) throw ValidationException('Lançamento não encontrado.');
+    await _db.cardTransactionsDao.updateTransaction(existing.copyWith(
+      description: description.trim(),
+      categoryId: Value(categoryId),
+      notes: Value(notes),
+      updatedAt: DateTime.now(),
+    ));
+  }
+
+  /// Ajusta o valor de uma parcela específica (ex.: para corrigir uma
+  /// divergência entre o valor previsto e o cobrado pela fatura real),
+  /// sem alterar as demais parcelas da mesma compra.
+  Future<void> updateInstallmentAmount({required int installmentId, required int amountCents}) async {
+    if (amountCents < 0) throw ValidationException('O valor não pode ser negativo.');
+    final existing = await _db.cardInstallmentsDao.getById(installmentId);
+    if (existing == null) throw ValidationException('Parcela não encontrada.');
+    await _db.cardInstallmentsDao.updateInstallment(existing.copyWith(amountCents: amountCents));
+  }
+
+  /// Exclui uma única parcela da fatura (ex.: foi cobrada por engano ou
+  /// estornada à parte). Se depois disso a compra não tiver mais nenhuma
+  /// parcela em nenhuma fatura, o lançamento da compra também é removido,
+  /// para não deixar um registro orfão.
+  Future<void> deleteInstallment(int installmentId) async {
+    await _db.transaction(() async {
+      final installment = await _db.cardInstallmentsDao.getById(installmentId);
+      if (installment == null) return;
+      await _db.cardInstallmentsDao.deleteOne(installmentId);
+      final remaining = await _db.cardInstallmentsDao.getForTransaction(installment.cardTransactionId);
+      if (remaining.isEmpty) {
+        await _db.cardTransactionsDao.deleteTransaction(installment.cardTransactionId);
+      }
+    });
+  }
+
+  Stream<List<CardInstallmentRow>> watchInstallmentsForBill(int billId) {
+    return _db.cardInstallmentsDao.watchForBill(billId);
+  }
+
+  Future<List<CardInstallmentRow>> getInstallmentsForBill(int billId) {
+    return _db.cardInstallmentsDao.getForBill(billId);
+  }
+
+  Future<CardTransactionRow?> getTransactionById(int id) => _db.cardTransactionsDao.getById(id);
+
   Future<AccountRow?> _accountById(int id) => _db.accountsDao.getById(id);
 
   // ---- Faturas ----

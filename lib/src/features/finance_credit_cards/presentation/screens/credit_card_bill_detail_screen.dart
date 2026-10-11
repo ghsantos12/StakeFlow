@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
+import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/money_text.dart';
 import '../../../../core/widgets/section_card.dart';
 import '../../../../domain/models/enums.dart';
-import '../../../../providers/data_providers.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../../providers/service_providers.dart';
 import '../widgets/bill_status_label.dart';
@@ -57,6 +57,32 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
                   icon: const Icon(Icons.payments_outlined),
                   label: const Text('Pagar fatura'),
                 ),
+              const SizedBox(height: 20),
+              Text('Lançamentos desta fatura', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Consumer(
+                builder: (context, ref, _) {
+                  final detailsAsync = ref.watch(billInstallmentDetailsProvider(billId));
+                  return detailsAsync.when(
+                    data: (details) {
+                      if (details.isEmpty) {
+                        return const EmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Nenhum lançamento nesta fatura',
+                          message: 'Compras no cartão aparecem aqui conforme entram no ciclo.',
+                        );
+                      }
+                      return Column(
+                        children: [
+                          for (final detail in details) _InstallmentTile(detail: detail),
+                        ],
+                      );
+                    },
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Text('Erro: $e'),
+                  );
+                },
+              ),
             ],
           );
         },
@@ -67,12 +93,11 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _openPaymentDialog(BuildContext context, WidgetRef ref, int remainingCents) async {
-    final amountController = TextEditingController(text: (remainingCents / 100).toStringAsFixed(2));
+    final amountController = TextEditingController(text: Money.formatInput(remainingCents));
     int? accountId;
     var paidAt = DateTime.now();
 
-    final accounts = (await ref.read(accountsStreamProvider.future));
-    final bankAccounts = accounts.where((a) => a.type == AccountType.bank).toList();
+    final bankAccounts = await ref.read(financialAccountsStreamProvider.future);
     if (bankAccounts.isNotEmpty) accountId = bankAccounts.first.id;
 
     if (!context.mounted) return;
@@ -95,7 +120,8 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CentsInputFormatter()],
                     decoration: const InputDecoration(labelText: 'Valor (R\$)'),
                   ),
                   const SizedBox(height: 12),
@@ -144,5 +170,176 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+class _InstallmentTile extends ConsumerWidget {
+  const _InstallmentTile({required this.detail});
+  final BillInstallmentDetail detail;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final installment = detail.installment;
+    final transaction = detail.transaction;
+    final isMultiInstallment = installment.totalInstallments > 1;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(transaction.type.isCredit ? Icons.undo : Icons.shopping_bag_outlined),
+        title: Text(transaction.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          isMultiInstallment
+              ? 'Parcela ${installment.installmentNumber}/${installment.totalInstallments} · ${formatDate(transaction.purchaseDate)}'
+              : formatDate(transaction.purchaseDate),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${transaction.type.isCredit ? '+' : '-'}${Money.format(installment.amountCents)}',
+              style: TextStyle(
+                color: transaction.type.isCredit ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit_info') {
+                  _openEditInfoDialog(context, ref);
+                } else if (value == 'edit_amount') {
+                  _openEditAmountDialog(context, ref);
+                } else if (value == 'delete') {
+                  _confirmDelete(context, ref);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit_info', child: Text('Editar descrição/categoria')),
+                PopupMenuItem(value: 'edit_amount', child: Text('Editar valor desta parcela')),
+                PopupMenuItem(value: 'delete', child: Text('Excluir esta parcela')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEditInfoDialog(BuildContext context, WidgetRef ref) async {
+    final descriptionController = TextEditingController(text: detail.transaction.description);
+    final categories = await ref.read(categoriesStreamProvider.future);
+    final expenseCategories = categories.where((c) => c.kind == CategoryKind.expense && !c.isArchived).toList();
+    int? categoryId = detail.transaction.categoryId;
+
+    if (!context.mounted) return;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Editar lançamento'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    initialValue: expenseCategories.any((c) => c.id == categoryId) ? categoryId : null,
+                    decoration: const InputDecoration(labelText: 'Categoria (opcional)'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Sem categoria')),
+                      for (final c in expenseCategories) DropdownMenuItem(value: c.id, child: Text(c.name)),
+                    ],
+                    onChanged: (v) => setState(() => categoryId = v),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+                FilledButton(
+                  onPressed: () async {
+                    try {
+                      await ref.read(creditCardServiceProvider).updateTransactionInfo(
+                            transactionId: detail.transaction.id,
+                            description: descriptionController.text,
+                            categoryId: categoryId,
+                            notes: detail.transaction.notes,
+                          );
+                      if (context.mounted) Navigator.of(context).pop();
+                    } catch (e) {
+                      if (context.mounted) showAppSnackBar(context, 'Erro: $e', isError: true);
+                    }
+                  },
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openEditAmountDialog(BuildContext context, WidgetRef ref) async {
+    final amountController = TextEditingController(text: Money.formatInput(detail.installment.amountCents));
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Editar valor da parcela'),
+          content: TextField(
+            controller: amountController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [CentsInputFormatter()],
+            decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () async {
+                final amount = Money.parseToCents(amountController.text);
+                if (amount == null || amount < 0) {
+                  showAppSnackBar(context, 'Valor inválido', isError: true);
+                  return;
+                }
+                try {
+                  await ref.read(creditCardServiceProvider).updateInstallmentAmount(
+                        installmentId: detail.installment.id,
+                        amountCents: amount,
+                      );
+                  if (context.mounted) Navigator.of(context).pop();
+                } catch (e) {
+                  if (context.mounted) showAppSnackBar(context, 'Erro: $e', isError: true);
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final isMultiInstallment = detail.installment.totalInstallments > 1;
+    final confirmed = await confirmDialog(
+      context,
+      title: 'Excluir parcela',
+      message: isMultiInstallment
+          ? 'Só esta parcela (${detail.installment.installmentNumber}/${detail.installment.totalInstallments}) será removida desta fatura — as demais parcelas da compra não são afetadas.'
+          : 'Esta compra não tem outras parcelas, então o lançamento será excluído por completo.',
+      confirmLabel: 'Excluir',
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(creditCardServiceProvider).deleteInstallment(detail.installment.id);
+    } catch (e) {
+      if (context.mounted) showAppSnackBar(context, 'Erro: $e', isError: true);
+    }
   }
 }

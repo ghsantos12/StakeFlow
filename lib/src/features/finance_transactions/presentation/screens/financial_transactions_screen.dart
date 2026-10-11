@@ -6,14 +6,16 @@ import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../data/database/database.dart';
 import '../../../../domain/models/enums.dart';
+import '../../../../domain/services/financial_analytics_calculations.dart';
 import '../../../../providers/data_providers.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../../features/transactions/presentation/widgets/movement_type_label.dart';
 
-/// Extrato do módulo financeiro: mostra todas as movimentações das contas
-/// bancárias (inclusive as geradas pelo módulo de apostas, como saques de
-/// casas de apostas — que aparecem aqui como transferência interna, não
-/// como receita), com filtro por categoria.
+/// Extrato do módulo financeiro: mostra as movimentações que tocam ao
+/// menos uma conta bancária "pessoal" (exclui casas de apostas e contas
+/// marcadas como exclusivas para dinheiro de apostas). Um saque de banca
+/// só aparece aqui quando o destino é uma conta pessoal — como uma
+/// transferência interna, nunca como receita — com filtro por categoria.
 class FinancialTransactionsScreen extends ConsumerStatefulWidget {
   const FinancialTransactionsScreen({super.key});
 
@@ -30,6 +32,7 @@ class _FinancialTransactionsScreenState extends ConsumerState<FinancialTransacti
     final movementsAsync = ref.watch(movementsStreamProvider);
     final categoriesAsync = ref.watch(categoriesStreamProvider);
     final accountsAsync = ref.watch(accountsStreamProvider);
+    final financialAccountsAsync = ref.watch(financialAccountsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -61,8 +64,9 @@ class _FinancialTransactionsScreenState extends ConsumerState<FinancialTransacti
                 final categories = categoriesAsync.value ?? [];
                 final namesById = {for (final a in accounts) a.id: a.name};
                 final categoryNames = {for (final c in categories) c.id: c.name};
+                final financialAccountIds = (financialAccountsAsync.value ?? []).map((a) => a.id).toSet();
 
-                var filtered = movements.where((m) {
+                var filtered = filterByFinancialAccounts(movements, financialAccountIds).where((m) {
                   if (_categoryFilter != null && m.categoryId != _categoryFilter) return false;
                   if (_search.isEmpty) return true;
                   final desc = (m.description ?? '').toLowerCase();

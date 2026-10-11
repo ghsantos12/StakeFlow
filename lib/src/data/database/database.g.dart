@@ -158,6 +158,21 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _bettingFundsOnlyMeta = const VerificationMeta(
+    'bettingFundsOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> bettingFundsOnly = GeneratedColumn<bool>(
+    'betting_funds_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("betting_funds_only" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -173,6 +188,7 @@ class $AccountsTable extends Accounts
     cdbAccumulatedBeforeTrackingCents,
     bankAccountKind,
     colorValue,
+    bettingFundsOnly,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -259,6 +275,15 @@ class $AccountsTable extends Accounts
         colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
       );
     }
+    if (data.containsKey('betting_funds_only')) {
+      context.handle(
+        _bettingFundsOnlyMeta,
+        bettingFundsOnly.isAcceptableOrUnknown(
+          data['betting_funds_only']!,
+          _bettingFundsOnlyMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -326,6 +351,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.int,
         data['${effectivePrefix}color_value'],
       ),
+      bettingFundsOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}betting_funds_only'],
+      )!,
     );
   }
 
@@ -374,6 +403,13 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
 
   /// Cor de identificação visual da conta (módulo financeiro).
   final int? colorValue;
+
+  /// Marca uma conta bancária como exclusiva para o dinheiro de apostas:
+  /// ela (e suas movimentações) ficam fora do dashboard/extrato/previsão/
+  /// relatórios do módulo financeiro, igual às casas de apostas — só
+  /// aparecem lá quando o dinheiro é transferido para outra conta bancária
+  /// que não tenha esta marcação. Sem efeito em contas de casa de apostas.
+  final bool bettingFundsOnly;
   const AccountRow({
     required this.id,
     required this.name,
@@ -388,6 +424,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.cdbAccumulatedBeforeTrackingCents,
     this.bankAccountKind,
     this.colorValue,
+    required this.bettingFundsOnly,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -425,6 +462,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || colorValue != null) {
       map['color_value'] = Variable<int>(colorValue);
     }
+    map['betting_funds_only'] = Variable<bool>(bettingFundsOnly);
     return map;
   }
 
@@ -457,6 +495,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       colorValue: colorValue == null && nullToAbsent
           ? const Value.absent()
           : Value(colorValue),
+      bettingFundsOnly: Value(bettingFundsOnly),
     );
   }
 
@@ -491,6 +530,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         serializer.fromJson<String?>(json['bankAccountKind']),
       ),
       colorValue: serializer.fromJson<int?>(json['colorValue']),
+      bettingFundsOnly: serializer.fromJson<bool>(json['bettingFundsOnly']),
     );
   }
   @override
@@ -520,6 +560,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         $AccountsTable.$converterbankAccountKindn.toJson(bankAccountKind),
       ),
       'colorValue': serializer.toJson<int?>(colorValue),
+      'bettingFundsOnly': serializer.toJson<bool>(bettingFundsOnly),
     };
   }
 
@@ -537,6 +578,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     int? cdbAccumulatedBeforeTrackingCents,
     Value<BankAccountKind?> bankAccountKind = const Value.absent(),
     Value<int?> colorValue = const Value.absent(),
+    bool? bettingFundsOnly,
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -559,6 +601,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         ? bankAccountKind.value
         : this.bankAccountKind,
     colorValue: colorValue.present ? colorValue.value : this.colorValue,
+    bettingFundsOnly: bettingFundsOnly ?? this.bettingFundsOnly,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -594,6 +637,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       colorValue: data.colorValue.present
           ? data.colorValue.value
           : this.colorValue,
+      bettingFundsOnly: data.bettingFundsOnly.present
+          ? data.bettingFundsOnly.value
+          : this.bettingFundsOnly,
     );
   }
 
@@ -614,7 +660,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
             'cdbAccumulatedBeforeTrackingCents: $cdbAccumulatedBeforeTrackingCents, ',
           )
           ..write('bankAccountKind: $bankAccountKind, ')
-          ..write('colorValue: $colorValue')
+          ..write('colorValue: $colorValue, ')
+          ..write('bettingFundsOnly: $bettingFundsOnly')
           ..write(')'))
         .toString();
   }
@@ -634,6 +681,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     cdbAccumulatedBeforeTrackingCents,
     bankAccountKind,
     colorValue,
+    bettingFundsOnly,
   );
   @override
   bool operator ==(Object other) =>
@@ -652,7 +700,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.cdbAccumulatedBeforeTrackingCents ==
               this.cdbAccumulatedBeforeTrackingCents &&
           other.bankAccountKind == this.bankAccountKind &&
-          other.colorValue == this.colorValue);
+          other.colorValue == this.colorValue &&
+          other.bettingFundsOnly == this.bettingFundsOnly);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -669,6 +718,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<int> cdbAccumulatedBeforeTrackingCents;
   final Value<BankAccountKind?> bankAccountKind;
   final Value<int?> colorValue;
+  final Value<bool> bettingFundsOnly;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -683,6 +733,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.cdbAccumulatedBeforeTrackingCents = const Value.absent(),
     this.bankAccountKind = const Value.absent(),
     this.colorValue = const Value.absent(),
+    this.bettingFundsOnly = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -698,6 +749,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.cdbAccumulatedBeforeTrackingCents = const Value.absent(),
     this.bankAccountKind = const Value.absent(),
     this.colorValue = const Value.absent(),
+    this.bettingFundsOnly = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        createdAt = Value(createdAt);
@@ -715,6 +767,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<int>? cdbAccumulatedBeforeTrackingCents,
     Expression<String>? bankAccountKind,
     Expression<int>? colorValue,
+    Expression<bool>? bettingFundsOnly,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -734,6 +787,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
             cdbAccumulatedBeforeTrackingCents,
       if (bankAccountKind != null) 'bank_account_kind': bankAccountKind,
       if (colorValue != null) 'color_value': colorValue,
+      if (bettingFundsOnly != null) 'betting_funds_only': bettingFundsOnly,
     });
   }
 
@@ -751,6 +805,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<int>? cdbAccumulatedBeforeTrackingCents,
     Value<BankAccountKind?>? bankAccountKind,
     Value<int?>? colorValue,
+    Value<bool>? bettingFundsOnly,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -768,6 +823,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           this.cdbAccumulatedBeforeTrackingCents,
       bankAccountKind: bankAccountKind ?? this.bankAccountKind,
       colorValue: colorValue ?? this.colorValue,
+      bettingFundsOnly: bettingFundsOnly ?? this.bettingFundsOnly,
     );
   }
 
@@ -825,6 +881,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (colorValue.present) {
       map['color_value'] = Variable<int>(colorValue.value);
     }
+    if (bettingFundsOnly.present) {
+      map['betting_funds_only'] = Variable<bool>(bettingFundsOnly.value);
+    }
     return map;
   }
 
@@ -845,7 +904,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
             'cdbAccumulatedBeforeTrackingCents: $cdbAccumulatedBeforeTrackingCents, ',
           )
           ..write('bankAccountKind: $bankAccountKind, ')
-          ..write('colorValue: $colorValue')
+          ..write('colorValue: $colorValue, ')
+          ..write('bettingFundsOnly: $bettingFundsOnly')
           ..write(')'))
         .toString();
   }
@@ -9403,6 +9463,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<int> cdbAccumulatedBeforeTrackingCents,
   Value<BankAccountKind?> bankAccountKind,
   Value<int?> colorValue,
+  Value<bool> bettingFundsOnly,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
@@ -9418,6 +9479,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> cdbAccumulatedBeforeTrackingCents,
   Value<BankAccountKind?> bankAccountKind,
   Value<int?> colorValue,
+  Value<bool> bettingFundsOnly,
 });
 
 final class $$AccountsTableReferences
@@ -9637,6 +9699,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get bettingFundsOnly => $composableBuilder(
+    column: $table.bettingFundsOnly,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9891,6 +9958,11 @@ class $$AccountsTableOrderingComposer
     column: $table.colorValue,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get bettingFundsOnly => $composableBuilder(
+    column: $table.bettingFundsOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -9959,6 +10031,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get bettingFundsOnly => $composableBuilder(
+    column: $table.bettingFundsOnly,
     builder: (column) => column,
   );
 
@@ -10190,6 +10267,7 @@ class $$AccountsTableTableManager
                     const Value.absent(),
                 Value<BankAccountKind?> bankAccountKind = const Value.absent(),
                 Value<int?> colorValue = const Value.absent(),
+                Value<bool> bettingFundsOnly = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -10205,6 +10283,7 @@ class $$AccountsTableTableManager
                     cdbAccumulatedBeforeTrackingCents,
                 bankAccountKind: bankAccountKind,
                 colorValue: colorValue,
+                bettingFundsOnly: bettingFundsOnly,
               ),
           createCompanionCallback:
               ({
@@ -10223,6 +10302,7 @@ class $$AccountsTableTableManager
                     const Value.absent(),
                 Value<BankAccountKind?> bankAccountKind = const Value.absent(),
                 Value<int?> colorValue = const Value.absent(),
+                Value<bool> bettingFundsOnly = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -10238,6 +10318,7 @@ class $$AccountsTableTableManager
                     cdbAccumulatedBeforeTrackingCents,
                 bankAccountKind: bankAccountKind,
                 colorValue: colorValue,
+                bettingFundsOnly: bettingFundsOnly,
               ),
           withReferenceMapper: (p0) => p0
               .map(

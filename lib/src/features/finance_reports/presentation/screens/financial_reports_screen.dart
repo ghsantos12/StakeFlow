@@ -231,6 +231,6 @@ class _PatrimonyTab extends ConsumerWidget {
 
 final _bankBalanceSeriesProvider =
     FutureProvider.family<List<DatedValue>, ({DateTime? from, DateTime? to})>((ref, range) async {
-  final service = ref.watch(analyticsServiceProvider);
+  final service = ref.watch(financialAnalyticsServiceProvider);
   return service.bankBalanceSeries(from: range.from, to: range.to);
 });

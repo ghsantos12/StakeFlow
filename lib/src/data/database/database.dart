@@ -80,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +119,11 @@ class AppDatabase extends _$AppDatabase {
           // aposta ganha (arredondamento de odd vs. valor pago pela casa).
           if (from < 4) {
             await m.addColumn(bets, bets.actualReturnCents);
+          }
+          // v4 -> v5: permite marcar uma conta bancária como exclusiva para
+          // dinheiro de apostas, para que fique fora do módulo financeiro.
+          if (from < 5) {
+            await m.addColumn(accounts, accounts.bettingFundsOnly);
           }
         },
       );

@@ -1,6 +1,7 @@
 import '../../data/database/database.dart';
 import '../models/enums.dart';
 import 'account_service.dart';
+import 'analytics_calculations.dart';
 import 'financial_analytics_calculations.dart';
 
 class CardSpendingTotal {
@@ -37,31 +38,50 @@ class FinancialAnalyticsService {
   final AppDatabase _db;
   final AccountService _accountService;
 
+  /// IDs das contas bancárias "do módulo financeiro" (exclui casas de
+  /// apostas e contas marcadas como exclusivas para dinheiro de apostas).
+  Future<Set<int>> _financialAccountIds() async {
+    final accounts = await _accountService.getFinancialAccounts();
+    return accounts.map((a) => a.id).toSet();
+  }
+
   Future<List<MonthlyIncomeExpense>> monthlyIncomeExpenseSeries({DateTime? from, DateTime? to}) async {
-    final movements = await _db.movementsDao.getAll();
+    final movements = filterByFinancialAccounts(await _db.movementsDao.getAll(), await _financialAccountIds());
     return monthlyIncomeExpense(movements, from: from, to: to);
   }
 
   Future<List<CategoryTotal>> expensesByCategorySeries({DateTime? from, DateTime? to}) async {
-    final movements = await _db.movementsDao.getAll();
+    final movements = filterByFinancialAccounts(await _db.movementsDao.getAll(), await _financialAccountIds());
     final categories = await _db.financialCategoriesDao.getAll();
     return expensesByCategory(movements, categories, from: from, to: to);
   }
 
   Future<List<CategoryTotal>> incomeByCategorySeries({DateTime? from, DateTime? to}) async {
-    final movements = await _db.movementsDao.getAll();
+    final movements = filterByFinancialAccounts(await _db.movementsDao.getAll(), await _financialAccountIds());
     final categories = await _db.financialCategoriesDao.getAll();
     return incomeByCategory(movements, categories, from: from, to: to);
   }
 
   Future<CashFlowSummary> cashFlow({DateTime? from, DateTime? to}) async {
-    final movements = await _db.movementsDao.getAll();
-    final accounts = await _db.accountsDao.getAll();
+    final financialAccounts = await _accountService.getFinancialAccounts();
+    final movements =
+        filterByFinancialAccounts(await _db.movementsDao.getAll(), financialAccounts.map((a) => a.id).toSet());
     var balance = 0;
-    for (final account in accounts) {
+    for (final account in financialAccounts) {
       balance += await _accountService.balanceOf(account);
     }
     return cashFlowSummary(movements, currentBalanceCents: balance, from: from, to: to);
+  }
+
+  /// Evolução do saldo das contas bancárias "do módulo financeiro" (exclui
+  /// casas de apostas e contas marcadas como exclusivas para dinheiro de
+  /// apostas) — não deve ser confundida com o patrimônio do módulo de
+  /// apostas, que inclui essas contas de propósito.
+  Future<List<DatedValue>> bankBalanceSeries({DateTime? from, DateTime? to}) async {
+    final accounts = await _accountService.getFinancialAccounts();
+    final ledger = await _db.ledgerDao.getAllOrderedByDate();
+    final points = buildPatrimonyHistory(accounts: accounts, ledger: ledger, bets: const [], from: from, to: to);
+    return [for (final p in points) DatedValue(date: p.date, valueCents: p.bankCents)];
   }
 
   Future<List<CardSpendingTotal>> spendingByCard({DateTime? from, DateTime? to}) async {
@@ -86,7 +106,7 @@ class FinancialAnalyticsService {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
 
-    final accounts = await _accountService.getAccounts();
+    final accounts = await _accountService.getFinancialAccounts();
     var totalBalance = 0;
     for (final account in accounts) {
       totalBalance += await _accountService.balanceOf(account);

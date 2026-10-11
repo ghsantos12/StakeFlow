@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
-import '../../../../domain/models/enums.dart';
 import '../../../../domain/models/exceptions.dart';
-import '../../../../providers/data_providers.dart';
+import '../../../../providers/financial_data_providers.dart';
 import '../../../../providers/service_providers.dart';
 
 const _kCardColors = [0xFF7C3AED, 0xFF2563EB, 0xFFDC2626, 0xFF16A34A, 0xFFF59E0B, 0xFF0EA5E9];
@@ -50,7 +49,7 @@ class _CreditCardFormScreenState extends ConsumerState<CreditCardFormScreen> {
     }
     _nameController.text = card.name;
     _issuerController.text = card.issuerBank ?? '';
-    _limitController.text = (card.creditLimitCents / 100).toStringAsFixed(2);
+    _limitController.text = Money.formatInput(card.creditLimitCents);
     _closingDayController.text = card.closingDay.toString();
     _dueDayController.text = card.dueDay.toString();
     _defaultAccountId = card.defaultPaymentAccountId;
@@ -70,7 +69,7 @@ class _CreditCardFormScreenState extends ConsumerState<CreditCardFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountsStreamProvider);
+    final accountsAsync = ref.watch(financialAccountsStreamProvider);
     final isEditing = widget.cardId != null;
 
     return Scaffold(
@@ -100,7 +99,8 @@ class _CreditCardFormScreenState extends ConsumerState<CreditCardFormScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _limitController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CentsInputFormatter()],
                     decoration: const InputDecoration(labelText: 'Limite total (R\$)'),
                   ),
                   const SizedBox(height: 12),
@@ -127,8 +127,7 @@ class _CreditCardFormScreenState extends ConsumerState<CreditCardFormScreen> {
                   ),
                   const SizedBox(height: 12),
                   accountsAsync.when(
-                    data: (accounts) {
-                      final banks = accounts.where((a) => a.type == AccountType.bank).toList();
+                    data: (banks) {
                       return DropdownButtonFormField<int>(
                         initialValue: banks.any((a) => a.id == _defaultAccountId) ? _defaultAccountId : null,
                         decoration: const InputDecoration(labelText: 'Conta padrão para pagamento (opcional)'),

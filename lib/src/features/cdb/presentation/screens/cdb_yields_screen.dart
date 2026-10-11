@@ -104,7 +104,8 @@ class CdbYieldsScreen extends ConsumerWidget {
                 children: [
                   TextField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CentsInputFormatter()],
                     decoration: const InputDecoration(labelText: 'Valor (R\$)'),
                   ),
                   const SizedBox(height: 12),

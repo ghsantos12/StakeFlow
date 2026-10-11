@@ -47,6 +47,22 @@ class AccountService {
         .map((list) => list.where((a) => a.type == AccountType.bank).toList());
   }
 
+  /// Contas bancárias "do módulo financeiro": exclui as marcadas como
+  /// [AccountRow.bettingFundsOnly] (dinheiro de apostas, separado das
+  /// finanças pessoais) — usado por todo o módulo financeiro (dashboard,
+  /// extrato, previsão, relatórios, seletores de conta) para que essas
+  /// contas e suas movimentações internas fiquem de fora, igual às casas
+  /// de apostas.
+  Stream<List<AccountRow>> watchFinancialAccounts({bool includeArchived = false}) {
+    return watchBankAccounts(includeArchived: includeArchived)
+        .map((list) => list.where((a) => !a.bettingFundsOnly).toList());
+  }
+
+  Future<List<AccountRow>> getFinancialAccounts({bool includeArchived = false}) async {
+    final accounts = await getAccounts(includeArchived: includeArchived);
+    return accounts.where((a) => a.type == AccountType.bank && !a.bettingFundsOnly).toList();
+  }
+
   Stream<AccountRow?> watchById(int id) => _db.accountsDao.watchById(id);
 
   /// Saldo calculado = saldo inicial + soma de todos os lançamentos do
@@ -103,6 +119,7 @@ class AccountService {
     int cdbAccumulatedBeforeTrackingCents = 0,
     BankAccountKind? bankAccountKind,
     int? colorValue,
+    bool bettingFundsOnly = false,
   }) {
     if (name.trim().isEmpty) {
       throw ValidationException('Informe um nome para a conta.');
@@ -119,6 +136,7 @@ class AccountService {
       cdbAccumulatedBeforeTrackingCents: Value(cdbAccumulatedBeforeTrackingCents),
       bankAccountKind: Value(bankAccountKind),
       colorValue: Value(colorValue),
+      bettingFundsOnly: Value(bettingFundsOnly),
     ));
   }
 

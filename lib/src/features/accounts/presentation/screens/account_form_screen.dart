@@ -30,6 +30,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   DateTime _cdbTrackingStart = DateTime.now();
   BankAccountKind _bankAccountKind = BankAccountKind.checking;
   int _colorValue = 0xFF2563EB;
+  bool _bettingFundsOnly = false;
 
   static const _colorOptions = [0xFF2563EB, 0xFFDC2626, 0xFF16A34A, 0xFFEA580C, 0xFF9333EA, 0xFF0891B2];
 
@@ -54,15 +55,15 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     }
     _nameController.text = account.name;
     _institutionController.text = account.institution ?? '';
-    _initialBalanceController.text = (account.initialBalanceCents / 100).toStringAsFixed(2);
+    _initialBalanceController.text = Money.formatInput(account.initialBalanceCents);
     _type = account.type;
     if (account.bankAccountKind != null) _bankAccountKind = account.bankAccountKind!;
     if (account.colorValue != null) _colorValue = account.colorValue!;
+    _bettingFundsOnly = account.bettingFundsOnly;
     if (account.cdiPercent != null) _cdiPercentController.text = account.cdiPercent!.toStringAsFixed(0);
     if (account.cdbAccountingType != null) _cdbAccountingType = account.cdbAccountingType!;
     if (account.cdbTrackingStartDate != null) _cdbTrackingStart = account.cdbTrackingStartDate!;
-    _accumulatedBeforeController.text =
-        (account.cdbAccumulatedBeforeTrackingCents / 100).toStringAsFixed(2);
+    _accumulatedBeforeController.text = Money.formatInput(account.cdbAccumulatedBeforeTrackingCents);
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -146,12 +147,24 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Exclusiva para dinheiro de apostas'),
+                      subtitle: const Text(
+                        'Fica fora do dashboard, extrato, previsão e relatórios do módulo financeiro — '
+                        'só aparece lá quando o dinheiro for transferido para outra conta.',
+                      ),
+                      value: _bettingFundsOnly,
+                      onChanged: (v) => setState(() => _bettingFundsOnly = v),
+                    ),
                   ],
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _initialBalanceController,
                     enabled: !isEditing,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CentsInputFormatter()],
                     decoration: InputDecoration(
                       labelText: 'Saldo inicial (R\$)',
                       helperText: isEditing
@@ -203,7 +216,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _accumulatedBeforeController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [CentsInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Rendimento acumulado antes do acompanhamento (R\$)',
                       ),
@@ -248,6 +262,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
           cdbTrackingStartDate: _type == AccountType.bank ? _cdbTrackingStart : null,
           cdbAccumulatedBeforeTrackingCents:
               _type == AccountType.bank ? (Money.parseToCents(_accumulatedBeforeController.text) ?? 0) : 0,
+          bettingFundsOnly: _type == AccountType.bank && _bettingFundsOnly,
         );
       } else {
         final existing = await service.getById(widget.accountId!);
@@ -264,6 +279,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
           cdbTrackingStartDate: Value(_type == AccountType.bank ? _cdbTrackingStart : null),
           cdbAccumulatedBeforeTrackingCents:
               _type == AccountType.bank ? (Money.parseToCents(_accumulatedBeforeController.text) ?? 0) : 0,
+          bettingFundsOnly: _type == AccountType.bank && _bettingFundsOnly,
         ));
       }
       if (mounted) context.pop();

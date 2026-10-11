@@ -24,4 +24,11 @@ class Accounts extends Table {
 
   /// Cor de identificação visual da conta (módulo financeiro).
   IntColumn get colorValue => integer().nullable()();
+
+  /// Marca uma conta bancária como exclusiva para o dinheiro de apostas:
+  /// ela (e suas movimentações) ficam fora do dashboard/extrato/previsão/
+  /// relatórios do módulo financeiro, igual às casas de apostas — só
+  /// aparecem lá quando o dinheiro é transferido para outra conta bancária
+  /// que não tenha esta marcação. Sem efeito em contas de casa de apostas.
+  BoolColumn get bettingFundsOnly => boolean().withDefault(const Constant(false))();
 }

@@ -14,6 +14,13 @@ final categoriesStreamProvider = StreamProvider<List<FinancialCategoryRow>>((ref
   return ref.watch(categoryServiceProvider).watchAll();
 });
 
+/// Contas bancárias visíveis ao módulo financeiro — exclui casas de
+/// apostas e contas marcadas como exclusivas para dinheiro de apostas.
+/// Usado em todos os seletores de conta do módulo financeiro.
+final financialAccountsStreamProvider = StreamProvider<List<AccountRow>>((ref) {
+  return ref.watch(accountServiceProvider).watchFinancialAccounts();
+});
+
 final creditCardsStreamProvider = StreamProvider<List<CreditCardRow>>((ref) {
   return ref.watch(creditCardServiceProvider).watchCards();
 });
@@ -103,6 +110,27 @@ final creditCardBillsProvider = FutureProvider.family<List<CreditCardBillSummary
     summaries.add(await service.billSummary(bill));
   }
   return summaries;
+});
+
+class BillInstallmentDetail {
+  const BillInstallmentDetail({required this.installment, required this.transaction});
+  final CardInstallmentRow installment;
+  final CardTransactionRow transaction;
+}
+
+/// Parcelas de uma fatura, já com a compra (transação) de origem de cada
+/// uma — para a tela de detalhe da fatura mostrar descrição/categoria
+/// junto do valor de cada parcela.
+final billInstallmentDetailsProvider = FutureProvider.family<List<BillInstallmentDetail>, int>((ref, billId) async {
+  ref.watch(dbChangesProvider);
+  final service = ref.watch(creditCardServiceProvider);
+  final installments = await service.getInstallmentsForBill(billId);
+  final details = <BillInstallmentDetail>[];
+  for (final installment in installments) {
+    final tx = await service.getTransactionById(installment.cardTransactionId);
+    if (tx != null) details.add(BillInstallmentDetail(installment: installment, transaction: tx));
+  }
+  return details;
 });
 
 final cardAvailableLimitProvider = FutureProvider.family<int, int>((ref, cardId) async {

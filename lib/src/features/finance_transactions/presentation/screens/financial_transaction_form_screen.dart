@@ -61,8 +61,8 @@ class _FinancialTransactionFormScreenState extends ConsumerState<FinancialTransa
     _sourceAccountId = m.sourceAccountId;
     _destinationAccountId = m.destinationAccountId;
     _categoryId = m.categoryId;
-    _amountController.text = (m.amountCents.abs() / 100).toStringAsFixed(2);
-    _feeController.text = (m.feeCents / 100).toStringAsFixed(2);
+    _amountController.text = Money.formatInput(m.amountCents.abs());
+    _feeController.text = Money.formatInput(m.feeCents);
     _descriptionController.text = m.description ?? '';
     _reasonController.text = m.adjustmentReason ?? '';
     _occurredAt = m.occurredAt;
@@ -107,7 +107,11 @@ class _FinancialTransactionFormScreenState extends ConsumerState<FinancialTransa
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
           : accountsAsync.when(
-              data: (accounts) => _buildForm(context, accounts, categoriesAsync.value ?? []),
+              // Contas exclusivas para dinheiro de apostas ficam de fora
+              // mesmo aqui — para movê-las ao módulo financeiro, use uma
+              // transferência pelo módulo de apostas.
+              data: (accounts) =>
+                  _buildForm(context, accounts.where((a) => !a.bettingFundsOnly).toList(), categoriesAsync.value ?? []),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
@@ -180,7 +184,8 @@ class _FinancialTransactionFormScreenState extends ConsumerState<FinancialTransa
           ],
           TextFormField(
             controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
+            inputFormatters: [CentsInputFormatter()],
             decoration: const InputDecoration(labelText: 'Valor (R\$)'),
             validator: (v) {
               final cents = Money.parseToCents(v ?? '');
@@ -192,7 +197,8 @@ class _FinancialTransactionFormScreenState extends ConsumerState<FinancialTransa
             const SizedBox(height: 12),
             TextFormField(
               controller: _feeController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: [CentsInputFormatter()],
               decoration: const InputDecoration(labelText: 'Taxa (R\$, opcional)'),
             ),
           ],

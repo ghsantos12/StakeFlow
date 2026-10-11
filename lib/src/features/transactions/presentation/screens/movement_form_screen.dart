@@ -55,8 +55,8 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
     _type = m.type;
     _sourceAccountId = m.sourceAccountId;
     _destinationAccountId = m.destinationAccountId;
-    _amountController.text = (m.amountCents.abs() / 100).toStringAsFixed(2);
-    _feeController.text = (m.feeCents / 100).toStringAsFixed(2);
+    _amountController.text = Money.formatInput(m.amountCents.abs());
+    _feeController.text = Money.formatInput(m.feeCents);
     _descriptionController.text = m.description ?? '';
     _reasonController.text = m.adjustmentReason ?? '';
     _occurredAt = m.occurredAt;
@@ -220,7 +220,8 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
           ],
           TextFormField(
             controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
+            inputFormatters: [CentsInputFormatter()],
             decoration: const InputDecoration(labelText: 'Valor (R\$)'),
             validator: (v) {
               final cents = Money.parseToCents(v ?? '');
@@ -232,7 +233,8 @@ class _MovementFormScreenState extends ConsumerState<MovementFormScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _feeController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: [CentsInputFormatter()],
               decoration: const InputDecoration(labelText: 'Taxa (R\$, opcional)'),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;

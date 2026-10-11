@@ -101,14 +101,14 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
     _eventController.text = bet.event;
     _marketController.text = bet.market;
     _selectionController.text = bet.selection;
-    _stakeController.text = (bet.stakeCents / 100).toStringAsFixed(2);
+    _stakeController.text = Money.formatInput(bet.stakeCents);
     _oddsController.text = DecimalOdds.format(bet.oddsScaled);
-    _cashoutController.text = bet.cashoutCents != null ? (bet.cashoutCents! / 100).toStringAsFixed(2) : '';
+    _cashoutController.text = bet.cashoutCents != null ? Money.formatInput(bet.cashoutCents!) : '';
     _notesController.text = bet.notes ?? '';
     _status = bet.status;
     _adjustReturnManually = bet.actualReturnCents != null;
     _actualReturnController.text =
-        bet.actualReturnCents != null ? (bet.actualReturnCents! / 100).toStringAsFixed(2) : '';
+        bet.actualReturnCents != null ? Money.formatInput(bet.actualReturnCents!) : '';
     _betType = service.typeOf(bet);
     if (_betType == BetType.multiple) {
       final legRows = await service.getLegs(bet.id);
@@ -242,7 +242,8 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _stakeController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
+            inputFormatters: [CentsInputFormatter()],
             decoration: const InputDecoration(labelText: 'Stake (R\$)'),
             onChanged: (_) => setState(() {}),
             validator: (v) {
@@ -309,7 +310,8 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _cashoutController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: [CentsInputFormatter()],
               decoration: const InputDecoration(labelText: 'Valor recebido no cashout (R\$)'),
               validator: (v) {
                 if (_status != BetStatus.cashedOut) return null;
@@ -329,7 +331,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
               onChanged: (v) => setState(() {
                 _adjustReturnManually = v;
                 if (v && _actualReturnController.text.isEmpty) {
-                  _actualReturnController.text = (_potentialReturn / 100).toStringAsFixed(2);
+                  _actualReturnController.text = Money.formatInput(_potentialReturn);
                 }
               }),
             ),
@@ -337,7 +339,8 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _actualReturnController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: TextInputType.number,
+                inputFormatters: [CentsInputFormatter()],
                 decoration: const InputDecoration(labelText: 'Valor total recebido (R\$)'),
                 validator: (v) {
                   if (_status != BetStatus.won || !_adjustReturnManually) return null;

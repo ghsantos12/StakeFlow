@@ -1,5 +1,3 @@
-import '../../data/database/database.dart';
-import '../models/enums.dart';
 import 'account_service.dart';
 import 'bills_payable_service.dart';
 import 'bills_receivable_service.dart';
@@ -65,14 +63,12 @@ class ForecastSummary {
 /// é um cenário separado (ver [CdbEstimationService]), não entra aqui.
 class ForecastService {
   ForecastService(
-    this._db,
     this._accountService,
     this._billsPayableService,
     this._billsReceivableService,
     this._creditCardService,
   );
 
-  final AppDatabase _db;
   final AccountService _accountService;
   final BillsPayableService _billsPayableService;
   final BillsReceivableService _billsReceivableService;
@@ -140,10 +136,9 @@ class ForecastService {
       if (account == null) return 0;
       return _accountService.balanceOf(account);
     }
-    final accounts = await _db.accountsDao.getAll();
+    final accounts = await _accountService.getFinancialAccounts();
     var total = 0;
     for (final account in accounts) {
-      if (account.type != AccountType.bank) continue;
       total += await _accountService.balanceOf(account);
     }
     return total;

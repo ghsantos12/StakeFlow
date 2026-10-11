@@ -9,7 +9,6 @@ import '../../../../core/widgets/section_card.dart';
 import '../../../../data/database/database.dart';
 import '../../../../domain/models/enums.dart';
 import '../../../../domain/models/exceptions.dart';
-import '../../../../providers/data_providers.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../../providers/service_providers.dart';
 import '../../../finance_credit_cards/presentation/widgets/bill_status_label.dart';
@@ -50,7 +49,7 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
     _existing = bill;
     if (bill != null) {
       _descriptionController.text = bill.description;
-      _amountController.text = (bill.amountCents / 100).toStringAsFixed(2);
+      _amountController.text = Money.formatInput(bill.amountCents);
       _notesController.text = bill.notes ?? '';
       _categoryId = bill.categoryId;
       _accountId = bill.accountId;
@@ -71,7 +70,7 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
   Widget build(BuildContext context) {
     final isEditing = widget.billId != null;
     final categoriesAsync = ref.watch(categoriesStreamProvider);
-    final accountsAsync = ref.watch(accountsStreamProvider);
+    final accountsAsync = ref.watch(financialAccountsStreamProvider);
     final summaryAsync = isEditing ? ref.watch(billReceivableSummaryProvider(widget.billId!)) : null;
 
     return Scaffold(
@@ -119,7 +118,8 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [CentsInputFormatter()],
                         decoration: const InputDecoration(labelText: 'Valor (R\$)'),
                         validator: (v) {
                           final cents = Money.parseToCents(v ?? '');
@@ -143,8 +143,7 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
                       ),
                       const SizedBox(height: 12),
                       accountsAsync.when(
-                        data: (accounts) {
-                          final banks = accounts.where((a) => a.type == AccountType.bank).toList();
+                        data: (banks) {
                           return DropdownButtonFormField<int>(
                             initialValue: banks.any((a) => a.id == _accountId) ? _accountId : null,
                             decoration: const InputDecoration(labelText: 'Conta prevista (opcional)'),
@@ -265,9 +264,8 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
       showAppSnackBar(context, 'Esta conta já foi totalmente recebida.');
       return;
     }
-    final amountController = TextEditingController(text: (remaining / 100).toStringAsFixed(2));
-    final accounts = await ref.read(accountsStreamProvider.future);
-    final banks = accounts.where((a) => a.type == AccountType.bank).toList();
+    final amountController = TextEditingController(text: Money.formatInput(remaining));
+    final banks = await ref.read(financialAccountsStreamProvider.future);
     int? accountId = _accountId ?? (banks.isNotEmpty ? banks.first.id : null);
     var receivedAt = DateTime.now();
 
@@ -291,7 +289,8 @@ class _BillReceivableFormScreenState extends ConsumerState<BillReceivableFormScr
                   const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CentsInputFormatter()],
                     decoration: const InputDecoration(labelText: 'Valor recebido (R\$)'),
                   ),
                 ],

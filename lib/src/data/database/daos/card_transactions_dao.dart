@@ -25,6 +25,10 @@ class CardTransactionsDao extends DatabaseAccessor<AppDatabase> with _$CardTrans
     return into(cardTransactions).insert(entry);
   }
 
+  Future<bool> updateTransaction(CardTransactionRow row) {
+    return update(cardTransactions).replace(row);
+  }
+
   Future<int> deleteTransaction(int id) {
     return (delete(cardTransactions)..where((t) => t.id.equals(id))).go();
   }

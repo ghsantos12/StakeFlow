@@ -83,7 +83,7 @@ class _AccountTile extends ConsumerWidget {
                 loading: () => const Text('Carregando...'),
                 error: (_, _) => const Text('—'),
               )
-            : (account.institution != null ? Text(account.institution!) : null),
+            : _buildBankSubtitle(account),
         trailing: balanceAsync.when(
           data: (balance) => MoneyText(balance, style: Theme.of(context).textTheme.titleMedium),
           loading: () => const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -91,5 +91,14 @@ class _AccountTile extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget? _buildBankSubtitle(AccountRow account) {
+    final parts = [
+      if (account.institution != null) account.institution!,
+      if (account.bettingFundsOnly) 'Exclusiva para apostas — fora do módulo financeiro',
+    ];
+    if (parts.isEmpty) return null;
+    return Text(parts.join(' · '));
   }
 }

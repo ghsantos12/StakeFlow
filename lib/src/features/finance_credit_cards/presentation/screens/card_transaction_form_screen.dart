@@ -68,7 +68,8 @@ class _CardTransactionFormScreenState extends ConsumerState<CardTransactionFormS
             const SizedBox(height: 12),
             TextFormField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: [CentsInputFormatter()],
               decoration: const InputDecoration(labelText: 'Valor total (R\$)'),
               validator: (v) {
                 final cents = Money.parseToCents(v ?? '');

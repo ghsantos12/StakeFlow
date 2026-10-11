@@ -50,6 +50,20 @@ class CashFlowSummary {
   int get netCents => totalIncomeCents - totalExpenseCents;
 }
 
+/// Mantém apenas as movimentações que tocam ao menos uma conta "do módulo
+/// financeiro" (contas bancárias que não são exclusivas para dinheiro de
+/// apostas). Uma movimentação inteiramente confinada a casas de apostas e/
+/// ou a uma conta marcada como exclusiva para apostas nunca é receita,
+/// despesa ou saldo pessoal — só passa a contar quando o dinheiro é
+/// transferido para uma conta "normal".
+List<MovementRow> filterByFinancialAccounts(List<MovementRow> movements, Set<int> financialAccountIds) {
+  return movements
+      .where((m) =>
+          (m.sourceAccountId != null && financialAccountIds.contains(m.sourceAccountId)) ||
+          (m.destinationAccountId != null && financialAccountIds.contains(m.destinationAccountId)))
+      .toList();
+}
+
 bool _inRange(DateTime date, DateTime? from, DateTime? to) {
   if (from != null && date.isBefore(DateTime(from.year, from.month, from.day))) return false;
   if (to != null) {

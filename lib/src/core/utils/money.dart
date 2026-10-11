@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 /// Utilitários para trabalhar com valores monetários armazenados como
@@ -16,6 +17,12 @@ class Money {
     symbol: 'R\$',
     decimalDigits: 0,
   );
+
+  static final NumberFormat _plainBr = NumberFormat('#,##0.00', 'pt_BR');
+
+  /// Formata centavos para o texto de um campo de valor (sem símbolo de
+  /// moeda), usado por [CentsInputFormatter] — ex.: 123456 -> "1.234,56".
+  static String formatInput(int cents) => _plainBr.format(cents / 100);
 
   /// Formata um valor em centavos para string BRL, ex: 12345 -> "R$ 123,45".
   static String format(int cents) {
@@ -79,6 +86,34 @@ class Money {
   static int fromReais(double reais) => (reais * 100).round();
 
   static double toReais(int cents) => cents / 100;
+}
+
+/// Máscara de valor em dinheiro: cada dígito digitado entra pela direita,
+/// como numa calculadora (1 -> "0,01", 12 -> "0,12", 123 -> "1,23"...), em
+/// vez de inserir o caractere na posição do cursor sobre o texto já
+/// formatado — o que fazia o valor ficar bagunçado ao digitar sobre um
+/// campo pré-preenchido com "0,00".
+class CentsInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (newValue.text.length < oldValue.text.length) {
+      final oldDigits = oldValue.text.replaceAll(RegExp(r'\D'), '');
+      // Backspace/delete removeu um separador (',' ou '.') em vez de um
+      // dígito — remove o último dígito manualmente para o apagar surtir
+      // efeito.
+      if (digits == oldDigits && digits.isNotEmpty) {
+        digits = digits.substring(0, digits.length - 1);
+      }
+    }
+    if (digits.length > 15) digits = digits.substring(digits.length - 15);
+    final cents = digits.isEmpty ? 0 : int.parse(digits);
+    final formatted = Money.formatInput(cents);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
 }
 
 /// Representa uma odd decimal armazenada com 4 casas decimais de precisão

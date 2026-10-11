@@ -64,7 +64,6 @@ final billsReceivableServiceProvider = Provider<BillsReceivableService>((ref) {
 
 final forecastServiceProvider = Provider<ForecastService>((ref) {
   return ForecastService(
-    ref.watch(databaseProvider),
     ref.watch(accountServiceProvider),
     ref.watch(billsPayableServiceProvider),
     ref.watch(billsReceivableServiceProvider),

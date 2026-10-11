@@ -4,9 +4,7 @@ import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/money_text.dart';
 import '../../../../core/widgets/section_card.dart';
-import '../../../../domain/models/enums.dart';
 import '../../../../domain/services/forecast_service.dart';
-import '../../../../providers/data_providers.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../../providers/service_providers.dart';
 import '../../../../providers/settings_providers.dart';
@@ -17,7 +15,7 @@ class ForecastScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountsAsync = ref.watch(accountsStreamProvider);
+    final accountsAsync = ref.watch(financialAccountsStreamProvider);
     final selectedAccountId = ref.watch(forecastAccountProvider);
     final forecastAsync = ref.watch(forecastProvider);
 
@@ -27,8 +25,7 @@ class ForecastScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
           accountsAsync.when(
-            data: (accounts) {
-              final banks = accounts.where((a) => a.type == AccountType.bank).toList();
+            data: (banks) {
               return DropdownButtonFormField<int?>(
                 initialValue: banks.any((a) => a.id == selectedAccountId) ? selectedAccountId : null,
                 decoration: const InputDecoration(labelText: 'Conta'),
@@ -169,7 +166,7 @@ class _CdbScenario extends ConsumerWidget {
         ),
       );
     }
-    final accountsAsync = ref.watch(accountsStreamProvider);
+    final accountsAsync = ref.watch(financialAccountsStreamProvider);
     return accountsAsync.when(
       data: (accounts) {
         final account = accounts.where((a) => a.id == accountId).firstOrNull;
