@@ -75,4 +75,8 @@ class LedgerDao extends DatabaseAccessor<AppDatabase> with _$LedgerDaoMixin {
   Future<int> deleteForAccount(int accountId) {
     return (delete(ledgerEntries)..where((t) => t.accountId.equals(accountId))).go();
   }
+
+  Future<int> deleteForCreditCardBillPayment(int paymentId) {
+    return (delete(ledgerEntries)..where((t) => t.creditCardBillPaymentId.equals(paymentId))).go();
+  }
 }

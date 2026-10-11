@@ -11,7 +11,7 @@ class CardInstallments extends Table {
   IntColumn get installmentNumber => integer()();
   IntColumn get totalInstallments => integer()();
 
-  /// Valor desta parcela específica (a última parcela absorve o
+  /// Valor desta parcela específica (a primeira parcela absorve o
   /// arredondamento para que a soma bata exatamente com o total da compra).
   IntColumn get amountCents => integer()();
 

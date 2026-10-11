@@ -14,6 +14,7 @@ class FinancialDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshotAsync = ref.watch(financialDashboardSnapshotProvider);
+    final selectedFilter = ref.watch(billsDateFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,6 +35,18 @@ class FinancialDashboardScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final filter in BillsDateFilter.values)
+                  ChoiceChip(
+                    label: Text(filter.label),
+                    selected: selectedFilter == filter,
+                    onSelected: (_) => ref.read(billsDateFilterProvider.notifier).select(filter),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
             snapshotAsync.when(
               data: (s) => _DashboardGrid(snapshot: s),
               loading: () => const Padding(
@@ -41,6 +54,11 @@ class FinancialDashboardScreen extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (e, _) => Text('Erro ao carregar indicadores: $e'),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '"Contas a pagar" inclui a fatura atual do cartão, mesmo antes de fechar.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
             ),
             const SizedBox(height: 24),
             Text('Ações rápidas', style: Theme.of(context).textTheme.titleMedium),

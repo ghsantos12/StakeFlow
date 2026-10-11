@@ -102,9 +102,13 @@ class FinancialAnalyticsService {
     return result;
   }
 
-  Future<FinancialDashboardSnapshot> dashboardSnapshot() async {
+  /// [dueDateFilter], quando informado, restringe contas a pagar/receber e
+  /// faturas de cartão às que vencem num período específico (ex.: mês
+  /// atual, mês que vem) — nulo considera todas, sem limite de data.
+  Future<FinancialDashboardSnapshot> dashboardSnapshot({bool Function(DateTime dueDate)? dueDateFilter}) async {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
+    bool matchesDue(DateTime dueDate) => dueDateFilter?.call(dueDate) ?? true;
 
     final accounts = await _accountService.getFinancialAccounts();
     var totalBalance = 0;
@@ -119,7 +123,7 @@ class FinancialAnalyticsService {
 
     final payables = await _db.billsPayableDao.getAll();
     var totalPayable = 0;
-    for (final bill in payables.where((b) => !b.cancelled)) {
+    for (final bill in payables.where((b) => !b.cancelled && matchesDue(b.dueDate))) {
       final movements = await _db.movementsDao.getAll();
       final paid = movements.where((m) => m.payableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
       final remaining = bill.amountCents - paid;
@@ -128,7 +132,7 @@ class FinancialAnalyticsService {
 
     final receivables = await _db.billsReceivableDao.getAll();
     var totalReceivable = 0;
-    for (final bill in receivables.where((b) => !b.cancelled)) {
+    for (final bill in receivables.where((b) => !b.cancelled && matchesDue(b.dueDate))) {
       final movements = await _db.movementsDao.getAll();
       final received = movements.where((m) => m.receivableId == bill.id).fold<int>(0, (s, m) => s + m.amountCents);
       final remaining = bill.amountCents - received;
@@ -137,7 +141,7 @@ class FinancialAnalyticsService {
 
     final bills = await _db.creditCardBillsDao.getAll();
     var openCardBills = 0;
-    for (final bill in bills) {
+    for (final bill in bills.where((b) => matchesDue(b.dueDate))) {
       final installments = await _db.cardInstallmentsDao.getForBill(bill.id);
       final total = installments.fold<int>(0, (s, i) => s + i.amountCents);
       final payments = await _db.creditCardBillPaymentsDao.getForBill(bill.id);
@@ -150,7 +154,10 @@ class FinancialAnalyticsService {
       totalBalanceCents: totalBalance,
       monthIncomeCents: monthIncome,
       monthExpenseCents: monthExpense,
-      totalPayableCents: totalPayable,
+      // Faturas de cartão em aberto (incluindo a fatura atual, ainda não
+      // fechada) também são dívidas a pagar, não só as contas a pagar
+      // cadastradas manualmente.
+      totalPayableCents: totalPayable + openCardBills,
       totalReceivableCents: totalReceivable,
       openCardBillsCents: openCardBills,
     );

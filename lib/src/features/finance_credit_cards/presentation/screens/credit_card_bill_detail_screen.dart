@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/utils/pickers.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/money_text.dart';
 import '../../../../core/widgets/section_card.dart';
+import '../../../../data/database/database.dart';
 import '../../../../domain/models/enums.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../../providers/service_providers.dart';
@@ -19,77 +21,118 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final billsAsync = ref.watch(creditCardBillsProvider(cardId));
+    final cardStream = ref.watch(creditCardServiceProvider).watchCardById(cardId);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Fatura')),
-      body: billsAsync.when(
-        data: (bills) {
-          final summary = bills.where((b) => b.bill.id == billId).firstOrNull;
-          if (summary == null) return const Center(child: Text('Fatura não encontrada.'));
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            children: [
-              Row(
-                children: [
-                  Expanded(child: IndicatorTile(label: 'Total', value: MoneyText(summary.totalAmountCents))),
-                  const SizedBox(width: 12),
-                  Expanded(child: IndicatorTile(label: 'Pago', value: MoneyText(summary.paidAmountCents))),
-                  const SizedBox(width: 12),
-                  Expanded(child: IndicatorTile(label: 'Restante', value: MoneyText(summary.remainingCents))),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SectionCard(
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 10, color: creditCardBillStatusColor(summary.status)),
-                    const SizedBox(width: 8),
-                    Text(summary.status.label),
-                    const Spacer(),
-                    Text('Fecha em ${formatDate(summary.bill.closingDate)}'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              if (summary.remainingCents > 0)
-                FilledButton.icon(
-                  onPressed: () => _openPaymentDialog(context, ref, summary.remainingCents),
-                  icon: const Icon(Icons.payments_outlined),
-                  label: const Text('Pagar fatura'),
-                ),
-              const SizedBox(height: 20),
-              Text('Lançamentos desta fatura', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Consumer(
-                builder: (context, ref, _) {
-                  final detailsAsync = ref.watch(billInstallmentDetailsProvider(billId));
-                  return detailsAsync.when(
-                    data: (details) {
-                      if (details.isEmpty) {
-                        return const EmptyState(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Nenhum lançamento nesta fatura',
-                          message: 'Compras no cartão aparecem aqui conforme entram no ciclo.',
-                        );
-                      }
-                      return Column(
-                        children: [
-                          for (final detail in details) _InstallmentTile(detail: detail),
-                        ],
-                      );
-                    },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Text('Erro: $e'),
-                  );
-                },
+    return StreamBuilder<CreditCardRow?>(
+      stream: cardStream,
+      builder: (context, cardSnapshot) {
+        final card = cardSnapshot.data;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Fatura'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Excluir fatura',
+                onPressed: () => _confirmDeleteBill(context, ref),
               ),
             ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text('Erro: $e'),
-      ),
+          ),
+          body: card == null
+              ? const Center(child: CircularProgressIndicator())
+              : billsAsync.when(
+                  data: (bills) {
+                    final summary = bills.where((b) => b.bill.id == billId).firstOrNull;
+                    if (summary == null) return const Center(child: Text('Fatura não encontrada.'));
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                                child:
+                                    IndicatorTile(label: 'Total', value: MoneyText(summary.totalAmountCents))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: IndicatorTile(label: 'Pago', value: MoneyText(summary.paidAmountCents))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: IndicatorTile(
+                                    label: 'Restante', value: MoneyText(summary.remainingCents))),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SectionCard(
+                          child: Row(
+                            children: [
+                              Icon(Icons.circle, size: 10, color: creditCardBillStatusColor(summary.status)),
+                              const SizedBox(width: 8),
+                              Text(summary.status.label),
+                              const Spacer(),
+                              Text('Fecha em ${formatDate(summary.bill.closingDate)}'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (summary.remainingCents > 0)
+                          FilledButton.icon(
+                            onPressed: () => _openPaymentDialog(context, ref, summary.remainingCents),
+                            icon: const Icon(Icons.payments_outlined),
+                            label: const Text('Pagar fatura'),
+                          ),
+                        const SizedBox(height: 20),
+                        Text('Lançamentos desta fatura', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final detailsAsync = ref.watch(billInstallmentDetailsProvider(billId));
+                            return detailsAsync.when(
+                              data: (details) {
+                                if (details.isEmpty) {
+                                  return const EmptyState(
+                                    icon: Icons.receipt_long_outlined,
+                                    title: 'Nenhum lançamento nesta fatura',
+                                    message: 'Compras no cartão aparecem aqui conforme entram no ciclo.',
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    for (final detail in details)
+                                      _InstallmentTile(detail: detail, closingDay: card.closingDay),
+                                  ],
+                                );
+                              },
+                              loading: () => const Center(child: CircularProgressIndicator()),
+                              error: (e, _) => Text('Erro: $e'),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Text('Erro: $e'),
+                ),
+        );
+      },
     );
+  }
+
+  Future<void> _confirmDeleteBill(BuildContext context, WidgetRef ref) async {
+    final confirmed = await confirmDialog(
+      context,
+      title: 'Excluir fatura',
+      message: 'Todas as parcelas, compras sem outras parcelas e pagamentos registrados nesta fatura serão '
+          'excluídos. Parcelas da mesma compra em outras faturas não são afetadas. Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(creditCardServiceProvider).deleteBill(billId);
+      if (context.mounted) context.pop();
+    } catch (e) {
+      if (context.mounted) showAppSnackBar(context, 'Erro: $e', isError: true);
+    }
   }
 
   Future<void> _openPaymentDialog(BuildContext context, WidgetRef ref, int remainingCents) async {
@@ -174,14 +217,17 @@ class CreditCardBillDetailScreen extends ConsumerWidget {
 }
 
 class _InstallmentTile extends ConsumerWidget {
-  const _InstallmentTile({required this.detail});
+  const _InstallmentTile({required this.detail, required this.closingDay});
   final BillInstallmentDetail detail;
+  final int closingDay;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final installment = detail.installment;
     final transaction = detail.transaction;
     final isMultiInstallment = installment.totalInstallments > 1;
+    final effectiveDate =
+        ref.read(creditCardServiceProvider).installmentDate(transaction, installment.installmentNumber, closingDay);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -190,8 +236,8 @@ class _InstallmentTile extends ConsumerWidget {
         title: Text(transaction.description, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
           isMultiInstallment
-              ? 'Parcela ${installment.installmentNumber}/${installment.totalInstallments} · ${formatDate(transaction.purchaseDate)}'
-              : formatDate(transaction.purchaseDate),
+              ? 'Parcela ${installment.installmentNumber}/${installment.totalInstallments} · ${formatDate(effectiveDate)}'
+              : formatDate(effectiveDate),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -207,6 +253,8 @@ class _InstallmentTile extends ConsumerWidget {
               onSelected: (value) {
                 if (value == 'edit_info') {
                   _openEditInfoDialog(context, ref);
+                } else if (value == 'edit_date') {
+                  _openEditDateDialog(context, ref, effectiveDate);
                 } else if (value == 'edit_amount') {
                   _openEditAmountDialog(context, ref);
                 } else if (value == 'delete') {
@@ -215,6 +263,7 @@ class _InstallmentTile extends ConsumerWidget {
               },
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'edit_info', child: Text('Editar descrição/categoria')),
+                PopupMenuItem(value: 'edit_date', child: Text('Editar data desta parcela')),
                 PopupMenuItem(value: 'edit_amount', child: Text('Editar valor desta parcela')),
                 PopupMenuItem(value: 'delete', child: Text('Excluir esta parcela')),
               ],
@@ -282,6 +331,34 @@ class _InstallmentTile extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _openEditDateDialog(BuildContext context, WidgetRef ref, DateTime currentDate) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentDate,
+      firstDate: DateTime(2015),
+      lastDate: DateTime(2100),
+      helpText: 'Nova data desta parcela',
+    );
+    if (picked == null) return;
+    if (!context.mounted) return;
+    final confirmed = await confirmDialog(
+      context,
+      title: 'Alterar data da parcela',
+      message: 'Isso reposiciona todas as parcelas desta compra a partir do novo dia escolhido '
+          '(mantendo o mesmo mês relativo entre elas) — se necessário, parcelas podem mudar de fatura.',
+      confirmLabel: 'Alterar',
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(creditCardServiceProvider).rescheduleInstallment(
+            installmentId: detail.installment.id,
+            newDate: picked,
+          );
+    } catch (e) {
+      if (context.mounted) showAppSnackBar(context, 'Erro: $e', isError: true);
+    }
   }
 
   Future<void> _openEditAmountDialog(BuildContext context, WidgetRef ref) async {

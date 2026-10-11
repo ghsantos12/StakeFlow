@@ -9,43 +9,6 @@ import '../../../../domain/models/enums.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../finance_credit_cards/presentation/widgets/bill_status_label.dart';
 
-/// Filtro por vencimento das contas a pagar/receber — compartilhado pelas
-/// duas abas do hub.
-enum BillsDateFilter { all, currentMonth, nextMonth }
-
-extension BillsDateFilterX on BillsDateFilter {
-  String get label {
-    switch (this) {
-      case BillsDateFilter.all:
-        return 'Todas';
-      case BillsDateFilter.currentMonth:
-        return 'Mês atual';
-      case BillsDateFilter.nextMonth:
-        return 'Mês que vem';
-    }
-  }
-
-  bool matches(DateTime dueDate) {
-    if (this == BillsDateFilter.all) return true;
-    final now = DateTime.now();
-    final target = this == BillsDateFilter.currentMonth
-        ? (now.year, now.month)
-        : (DateTime(now.year, now.month + 1).year, DateTime(now.year, now.month + 1).month);
-    return dueDate.year == target.$1 && dueDate.month == target.$2;
-  }
-}
-
-class _BillsDateFilterNotifier extends Notifier<BillsDateFilter> {
-  @override
-  BillsDateFilter build() => BillsDateFilter.all;
-
-  void select(BillsDateFilter filter) => state = filter;
-}
-
-final billsDateFilterProvider = NotifierProvider<_BillsDateFilterNotifier, BillsDateFilter>(
-  _BillsDateFilterNotifier.new,
-);
-
 /// Hub de contas a pagar e a receber, em abas.
 class BillsHubScreen extends StatelessWidget {
   const BillsHubScreen({super.key});

@@ -157,7 +157,7 @@ class CreditCardService {
       for (var i = 1; i <= installmentsCount; i++) {
         final cycle = _addMonths(firstCycle, i - 1);
         final billId = await _findOrCreateBill(cardId, cycle.$1, cycle.$2, card);
-        final amount = i == installmentsCount ? baseShare + remainder : baseShare;
+        final amount = i == 1 ? baseShare + remainder : baseShare;
         companions.add(CardInstallmentsCompanion.insert(
           cardTransactionId: txId,
           billId: billId,
@@ -228,6 +228,49 @@ class CreditCardService {
 
   Stream<List<CardInstallmentRow>> watchInstallmentsForBill(int billId) {
     return _db.cardInstallmentsDao.watchForBill(billId);
+  }
+
+  /// Data "efetiva" de uma parcela: o mesmo dia da compra original,
+  /// projetado no mês desta parcela — é o que determina em qual fatura
+  /// ela cai (ver [_firstBillCycle]/[_findOrCreateBill]).
+  DateTime installmentDate(CardTransactionRow transaction, int installmentNumber, int closingDay) {
+    final firstCycle = _firstBillCycle(transaction.purchaseDate, closingDay);
+    final cycle = _addMonths(firstCycle, installmentNumber - 1);
+    return _dateForDay(cycle.$1, cycle.$2, transaction.purchaseDate.day);
+  }
+
+  /// Altera a data de uma parcela específica — na prática, reancora a
+  /// compra inteira nesse novo dia (preservando a posição relativa de
+  /// cada parcela: se a parcela 2 passa a cair em 03/09, a 1 cai em 03/08,
+  /// a 3 em 03/10, e assim por diante) e reatribui cada parcela à fatura
+  /// correta para a nova data, respeitando o dia de fechamento do cartão
+  /// — uma parcela pode mudar de fatura como consequência.
+  Future<void> rescheduleInstallment({required int installmentId, required DateTime newDate}) async {
+    final installment = await _db.cardInstallmentsDao.getById(installmentId);
+    if (installment == null) throw ValidationException('Parcela não encontrada.');
+    final transaction = await _db.cardTransactionsDao.getById(installment.cardTransactionId);
+    if (transaction == null) throw ValidationException('Lançamento não encontrado.');
+    final card = await _requireCard(transaction.cardId);
+
+    final newPurchaseCycle = _addMonths((newDate.year, newDate.month), -(installment.installmentNumber - 1));
+    final newPurchaseDate = _dateForDay(newPurchaseCycle.$1, newPurchaseCycle.$2, newDate.day);
+
+    await _db.transaction(() async {
+      await _db.cardTransactionsDao.updateTransaction(transaction.copyWith(
+        purchaseDate: newPurchaseDate,
+        updatedAt: DateTime.now(),
+      ));
+
+      final allInstallments = await _db.cardInstallmentsDao.getForTransaction(transaction.id);
+      final firstCycle = _firstBillCycle(newPurchaseDate, card.closingDay);
+      for (final inst in allInstallments) {
+        final cycle = _addMonths(firstCycle, inst.installmentNumber - 1);
+        final billId = await _findOrCreateBill(transaction.cardId, cycle.$1, cycle.$2, card);
+        if (billId != inst.billId) {
+          await _db.cardInstallmentsDao.updateInstallment(inst.copyWith(billId: billId));
+        }
+      }
+    });
   }
 
   Future<List<CardInstallmentRow>> getInstallmentsForBill(int billId) {
@@ -315,6 +358,32 @@ class CreditCardService {
         description: const Value('Pagamento de fatura de cartão'),
         createdAt: now,
       ));
+    });
+  }
+
+  /// Exclui a fatura inteira: cada parcela que está nela (cascateando para
+  /// a compra, se não restar mais nenhuma parcela em nenhuma outra
+  /// fatura), qualquer pagamento já registrado para ela (e o lançamento
+  /// correspondente no extrato) e, por fim, a própria fatura. Parcelas de
+  /// uma mesma compra que caem em outras faturas não são afetadas.
+  Future<void> deleteBill(int billId) async {
+    await _db.transaction(() async {
+      final installments = await _db.cardInstallmentsDao.getForBill(billId);
+      for (final installment in installments) {
+        await _db.cardInstallmentsDao.deleteOne(installment.id);
+        final remaining = await _db.cardInstallmentsDao.getForTransaction(installment.cardTransactionId);
+        if (remaining.isEmpty) {
+          await _db.cardTransactionsDao.deleteTransaction(installment.cardTransactionId);
+        }
+      }
+
+      final payments = await _db.creditCardBillPaymentsDao.getForBill(billId);
+      for (final payment in payments) {
+        await _db.ledgerDao.deleteForCreditCardBillPayment(payment.id);
+      }
+      await _db.creditCardBillPaymentsDao.deleteForBill(billId);
+
+      await _db.creditCardBillsDao.deleteBill(billId);
     });
   }
 

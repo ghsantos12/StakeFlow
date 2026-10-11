@@ -31,4 +31,8 @@ class CreditCardBillsDao extends DatabaseAccessor<AppDatabase> with _$CreditCard
   Future<int> insertBill(CreditCardBillsCompanion entry) {
     return into(creditCardBills).insert(entry);
   }
+
+  Future<int> deleteBill(int id) {
+    return (delete(creditCardBills)..where((t) => t.id.equals(id))).go();
+  }
 }
