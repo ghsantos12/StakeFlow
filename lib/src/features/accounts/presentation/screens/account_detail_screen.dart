@@ -36,7 +36,7 @@ class AccountDetailScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: () => context.push('/settings/accounts/$accountId/edit'),
+                onPressed: () => context.push('/accounts/$accountId/edit'),
               ),
             ],
           ),
@@ -109,7 +109,7 @@ class _AccountDetailBody extends ConsumerWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/settings/accounts/${account.id}/cdb-yields'),
+                  onPressed: () => context.push('/accounts/${account.id}/cdb-yields'),
                   child: const Text('Ver rendimentos'),
                 ),
               ],

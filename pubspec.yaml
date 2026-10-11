@@ -1,7 +1,7 @@
 name: stakeflow
 description: "StakeFlow - Gestão de banca de apostas esportivas"
 publish_to: 'none'
-version: 1.3.0+8
+version: 1.3.1+9
 
 environment:
   sdk: ^3.13.2

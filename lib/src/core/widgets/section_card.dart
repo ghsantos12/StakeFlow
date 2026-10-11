@@ -61,13 +61,20 @@ class IndicatorTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          DefaultTextStyle(
-            style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700, color: valueColor) ??
-                const TextStyle(),
-            child: value,
+          // FittedBox evita que um valor grande (ex.: "R$ 12.345,67") quebre
+          // para uma segunda linha dentro do card — em vez disso, o texto
+          // encolhe para caber em uma linha só.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: DefaultTextStyle(
+              style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700, color: valueColor) ??
+                  const TextStyle(),
+              child: value,
+            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),

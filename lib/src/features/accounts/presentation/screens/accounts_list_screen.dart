@@ -49,7 +49,7 @@ class AccountsListScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Erro: $e')),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/settings/accounts/new'),
+        onPressed: () => context.push('/accounts/new'),
         child: const Icon(Icons.add),
       ),
     );
@@ -69,7 +69,7 @@ class _AccountTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        onTap: () => context.push('/settings/accounts/${account.id}'),
+        onTap: () => context.push('/accounts/${account.id}'),
         leading: CircleAvatar(
           child: Icon(isBookmaker ? Icons.casino_outlined : Icons.account_balance_outlined),
         ),

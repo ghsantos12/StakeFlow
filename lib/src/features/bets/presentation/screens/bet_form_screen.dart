@@ -187,7 +187,7 @@ class _BetFormScreenState extends ConsumerState<BetFormScreen> {
                         const Text('Cadastre uma casa de apostas antes de registrar apostas.'),
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed: () => context.push('/settings/accounts/new'),
+                          onPressed: () => context.push('/accounts/new'),
                           child: const Text('Cadastrar casa de apostas'),
                         ),
                       ],

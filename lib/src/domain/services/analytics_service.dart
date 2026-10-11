@@ -49,10 +49,18 @@ class AnalyticsService {
   final AppDatabase _db;
 
   Future<_RawData> _loadRaw() async {
-    final accounts = await _db.accountsDao.getAll(includeArchived: true);
+    final allAccounts = await _db.accountsDao.getAll(includeArchived: true);
+    // Contas bancárias que não são dedicadas a dinheiro de apostas ficam
+    // fora de todos os cálculos do módulo de apostas (saldo bancário,
+    // patrimônio, rendimento de CDB) — simétrico ao módulo financeiro, que
+    // já exclui as contas marcadas como exclusivas para apostas.
+    final accounts = allAccounts.where((a) => a.type != AccountType.bank || a.bettingFundsOnly).toList();
+    final bettingAccountIds = accounts.map((a) => a.id).toSet();
+
     final bets = await _db.betsDao.getAll();
     final ledger = await _db.ledgerDao.getAllOrderedByDate();
-    final cdbYields = await _db.cdbYieldsDao.getAll();
+    final cdbYields =
+        (await _db.cdbYieldsDao.getAll()).where((y) => bettingAccountIds.contains(y.accountId)).toList();
     final movements = await _db.movementsDao.getAll();
     return _RawData(
       accounts: accounts,

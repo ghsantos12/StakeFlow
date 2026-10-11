@@ -9,6 +9,43 @@ import '../../../../domain/models/enums.dart';
 import '../../../../providers/financial_data_providers.dart';
 import '../../../finance_credit_cards/presentation/widgets/bill_status_label.dart';
 
+/// Filtro por vencimento das contas a pagar/receber — compartilhado pelas
+/// duas abas do hub.
+enum BillsDateFilter { all, currentMonth, nextMonth }
+
+extension BillsDateFilterX on BillsDateFilter {
+  String get label {
+    switch (this) {
+      case BillsDateFilter.all:
+        return 'Todas';
+      case BillsDateFilter.currentMonth:
+        return 'Mês atual';
+      case BillsDateFilter.nextMonth:
+        return 'Mês que vem';
+    }
+  }
+
+  bool matches(DateTime dueDate) {
+    if (this == BillsDateFilter.all) return true;
+    final now = DateTime.now();
+    final target = this == BillsDateFilter.currentMonth
+        ? (now.year, now.month)
+        : (DateTime(now.year, now.month + 1).year, DateTime(now.year, now.month + 1).month);
+    return dueDate.year == target.$1 && dueDate.month == target.$2;
+  }
+}
+
+class _BillsDateFilterNotifier extends Notifier<BillsDateFilter> {
+  @override
+  BillsDateFilter build() => BillsDateFilter.all;
+
+  void select(BillsDateFilter filter) => state = filter;
+}
+
+final billsDateFilterProvider = NotifierProvider<_BillsDateFilterNotifier, BillsDateFilter>(
+  _BillsDateFilterNotifier.new,
+);
+
 /// Hub de contas a pagar e a receber, em abas.
 class BillsHubScreen extends StatelessWidget {
   const BillsHubScreen({super.key});
@@ -22,8 +59,33 @@ class BillsHubScreen extends StatelessWidget {
           title: const Text('Contas a pagar/receber'),
           bottom: const TabBar(tabs: [Tab(text: 'A pagar'), Tab(text: 'A receber')]),
         ),
-        body: const TabBarView(
-          children: [_PayableTab(), _ReceivableTab()],
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final selected = ref.watch(billsDateFilterProvider);
+                  return Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final filter in BillsDateFilter.values)
+                        ChoiceChip(
+                          label: Text(filter.label),
+                          selected: selected == filter,
+                          onSelected: (_) => ref.read(billsDateFilterProvider.notifier).select(filter),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Expanded(
+              child: TabBarView(
+                children: [_PayableTab(), _ReceivableTab()],
+              ),
+            ),
+          ],
         ),
         floatingActionButton: Builder(builder: (context) {
           final index = DefaultTabController.of(context).index;
@@ -43,13 +105,17 @@ class _PayableTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final billsAsync = ref.watch(billsPayableStreamProvider);
+    final filter = ref.watch(billsDateFilterProvider);
     return billsAsync.when(
-      data: (bills) {
+      data: (allBills) {
+        final bills = allBills.where((b) => filter.matches(b.dueDate)).toList();
         if (bills.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             icon: Icons.event_busy_outlined,
-            title: 'Nenhuma conta a pagar',
-            message: 'Cadastre despesas futuras para acompanhar vencimentos.',
+            title: allBills.isEmpty ? 'Nenhuma conta a pagar' : 'Nenhuma conta neste período',
+            message: allBills.isEmpty
+                ? 'Cadastre despesas futuras para acompanhar vencimentos.'
+                : 'Ajuste o filtro de período para ver outras contas.',
           );
         }
         final sorted = [...bills]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
@@ -103,13 +169,17 @@ class _ReceivableTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final billsAsync = ref.watch(billsReceivableStreamProvider);
+    final filter = ref.watch(billsDateFilterProvider);
     return billsAsync.when(
-      data: (bills) {
+      data: (allBills) {
+        final bills = allBills.where((b) => filter.matches(b.dueDate)).toList();
         if (bills.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             icon: Icons.event_available_outlined,
-            title: 'Nenhuma conta a receber',
-            message: 'Cadastre receitas futuras para acompanhar previsões.',
+            title: allBills.isEmpty ? 'Nenhuma conta a receber' : 'Nenhuma conta neste período',
+            message: allBills.isEmpty
+                ? 'Cadastre receitas futuras para acompanhar previsões.'
+                : 'Ajuste o filtro de período para ver outras contas.',
           );
         }
         final sorted = [...bills]..sort((a, b) => a.dueDate.compareTo(b.dueDate));

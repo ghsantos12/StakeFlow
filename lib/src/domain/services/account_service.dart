@@ -95,7 +95,10 @@ class AccountService {
     for (final account in accounts) {
       final balance = await balanceOf(account);
       if (account.type == AccountType.bank) {
-        bank += balance;
+        // Contas que não são dedicadas a dinheiro de apostas ficam fora do
+        // patrimônio do módulo de apostas — simétrico à exclusão das casas
+        // de apostas no módulo financeiro.
+        if (account.bettingFundsOnly) bank += balance;
       } else {
         available += balance;
         committed += await committedOf(account.id);

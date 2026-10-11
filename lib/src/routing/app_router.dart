@@ -70,35 +70,32 @@ GoRouter createAppRouter({required String initialLocation}) {
             GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/settings',
-              builder: (context, state) => const SettingsScreen(),
-              routes: [
-                GoRoute(
-                  path: 'accounts',
-                  builder: (context, state) => const AccountsListScreen(),
-                  routes: [
-                    GoRoute(path: 'new', builder: (context, state) => const AccountFormScreen()),
-                    GoRoute(
-                      path: ':id',
-                      builder: (context, state) =>
-                          AccountDetailScreen(accountId: int.parse(state.pathParameters['id']!)),
-                    ),
-                    GoRoute(
-                      path: ':id/edit',
-                      builder: (context, state) =>
-                          AccountFormScreen(accountId: int.parse(state.pathParameters['id']!)),
-                    ),
-                    GoRoute(
-                      path: ':id/cdb-yields',
-                      builder: (context, state) =>
-                          CdbYieldsScreen(accountId: int.parse(state.pathParameters['id']!)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
           ]),
+        ],
+      ),
+      // Fora de ambos os shells: contas bancárias/casas de apostas são
+      // compartilhadas pelos dois módulos, então abrem como uma tela
+      // "neutra" (sem a barra de navegação de nenhum dos dois) — entrar
+      // aqui a partir do módulo financeiro não deve trocar para o shell
+      // do módulo de apostas (e vice-versa).
+      GoRoute(
+        path: '/accounts',
+        builder: (context, state) => const AccountsListScreen(),
+        routes: [
+          GoRoute(path: 'new', builder: (context, state) => const AccountFormScreen()),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => AccountDetailScreen(accountId: int.parse(state.pathParameters['id']!)),
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) => AccountFormScreen(accountId: int.parse(state.pathParameters['id']!)),
+          ),
+          GoRoute(
+            path: ':id/cdb-yields',
+            builder: (context, state) => CdbYieldsScreen(accountId: int.parse(state.pathParameters['id']!)),
+          ),
         ],
       ),
       StatefulShellRoute.indexedStack(

@@ -18,7 +18,7 @@ class FinanceMoreScreen extends StatelessWidget {
             title: const Text('Contas bancárias'),
             subtitle: const Text('Compartilhadas com o módulo de apostas'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/settings/accounts'),
+            onTap: () => context.push('/accounts'),
           ),
           ListTile(
             leading: const Icon(Icons.category_outlined),

@@ -36,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Gerenciar contas'),
               subtitle: const Text('Contas bancárias e casas de apostas'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/settings/accounts'),
+              onTap: () => context.push('/accounts'),
             ),
           ),
           const SizedBox(height: 24),
