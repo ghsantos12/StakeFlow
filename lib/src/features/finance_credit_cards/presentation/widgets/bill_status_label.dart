@@ -13,6 +13,8 @@ Color creditCardBillStatusColor(CreditCardBillStatus status) {
       return const Color(0xFF16A34A);
     case CreditCardBillStatus.overdue:
       return const Color(0xFFDC2626);
+    case CreditCardBillStatus.future:
+      return const Color(0xFF9CA3AF);
   }
 }
 

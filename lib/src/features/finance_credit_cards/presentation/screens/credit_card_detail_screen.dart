@@ -77,7 +77,7 @@ class CreditCardDetailScreen extends ConsumerWidget {
                           ..sort((a, b) {
                             final ay = a.bill.referenceYear, am = a.bill.referenceMonth;
                             final by = b.bill.referenceYear, bm = b.bill.referenceMonth;
-                            return by != ay ? by - ay : bm - am;
+                            return ay != by ? ay - by : am - bm;
                           });
                         return Column(
                           children: [

@@ -39,6 +39,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.navigationShell.currentIndex,
         onDestinationSelected: (index) {
+          // "Ajustes" não é uma aba com estado próprio — é uma tela
+          // compartilhada com o módulo financeiro (ver app_router.dart),
+          // então abre como uma tela avulsa em vez de trocar de aba.
+          if (index == 4) {
+            context.push('/settings');
+            return;
+          }
           widget.navigationShell.goBranch(
             index,
             initialLocation: index == widget.navigationShell.currentIndex,

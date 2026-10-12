@@ -41,6 +41,14 @@ class FinanceMoreScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/financas/mais/relatorios'),
           ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Configurações'),
+            subtitle: const Text('Tema, biometria, backup e outras opções gerais'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings'),
+          ),
         ],
       ),
     );

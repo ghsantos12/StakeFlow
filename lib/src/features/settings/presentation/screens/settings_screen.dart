@@ -256,9 +256,18 @@ class SettingsScreen extends ConsumerWidget {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
       await db.delete(db.ledgerEntries).go();
-      await db.delete(db.cdbYields).go();
+      await db.delete(db.cardInstallments).go();
+      await db.delete(db.creditCardBillPayments).go();
+      await db.delete(db.betLegs).go();
       await db.delete(db.movements).go();
+      await db.delete(db.cdbYields).go();
       await db.delete(db.bets).go();
+      await db.delete(db.cardTransactions).go();
+      await db.delete(db.creditCardBills).go();
+      await db.delete(db.billsPayable).go();
+      await db.delete(db.billsReceivable).go();
+      await db.delete(db.creditCards).go();
+      await db.delete(db.financialCategories).go();
       await db.delete(db.accounts).go();
     });
     if (context.mounted) showAppSnackBar(context, 'Todos os dados foram apagados.');

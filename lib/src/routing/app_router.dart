@@ -70,16 +70,15 @@ GoRouter createAppRouter({required String initialLocation}) {
           StatefulShellBranch(routes: [
             GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
           ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
-          ]),
         ],
       ),
-      // Fora de ambos os shells: contas bancárias/casas de apostas são
+      // Fora de ambos os shells: contas bancárias/casas de apostas e as
+      // configurações gerais (tema, biometria, backup, CDI...) são
       // compartilhadas pelos dois módulos, então abrem como uma tela
       // "neutra" (sem a barra de navegação de nenhum dos dois) — entrar
       // aqui a partir do módulo financeiro não deve trocar para o shell
       // do módulo de apostas (e vice-versa).
+      GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       GoRoute(
         path: '/accounts',
         builder: (context, state) => const AccountsListScreen(),
@@ -96,6 +95,41 @@ GoRouter createAppRouter({required String initialLocation}) {
           GoRoute(
             path: ':id/cdb-yields',
             builder: (context, state) => CdbYieldsScreen(accountId: int.parse(state.pathParameters['id']!)),
+          ),
+        ],
+      ),
+      // Atalhos para abrir um item específico a partir das telas de
+      // detalhe do dashboard financeiro (ex.: tocar numa fatura listada em
+      // "Contas a pagar"). Ficam fora do shell do módulo financeiro de
+      // propósito: se usássemos as rotas aninhadas nas abas (ex.:
+      // /financas/cartoes/:id/fatura/:billId), o push "contaminaria" o
+      // histórico daquela aba, e tocar a aba "Cartões" depois abriria essa
+      // fatura específica em vez da lista de cartões.
+      GoRoute(
+        path: '/financas-item',
+        redirect: (context, state) => '/financas',
+        routes: [
+          GoRoute(
+            path: 'fatura/:cardId/:billId',
+            builder: (context, state) => CreditCardBillDetailScreen(
+              cardId: int.parse(state.pathParameters['cardId']!),
+              billId: int.parse(state.pathParameters['billId']!),
+            ),
+          ),
+          GoRoute(
+            path: 'conta-pagar/:id',
+            builder: (context, state) =>
+                BillPayableFormScreen(billId: int.parse(state.pathParameters['id']!)),
+          ),
+          GoRoute(
+            path: 'conta-receber/:id',
+            builder: (context, state) =>
+                BillReceivableFormScreen(billId: int.parse(state.pathParameters['id']!)),
+          ),
+          GoRoute(
+            path: 'movimentacao/:id',
+            builder: (context, state) =>
+                FinancialTransactionFormScreen(movementId: int.parse(state.pathParameters['id']!)),
           ),
         ],
       ),

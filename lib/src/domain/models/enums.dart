@@ -160,7 +160,7 @@ extension CardTransactionTypeX on CardTransactionType {
 }
 
 /// Status de uma fatura de cartão — sempre calculado, nunca armazenado.
-enum CreditCardBillStatus { open, closed, partiallyPaid, paid, overdue }
+enum CreditCardBillStatus { open, closed, partiallyPaid, paid, overdue, future }
 
 extension CreditCardBillStatusX on CreditCardBillStatus {
   String get label {
@@ -175,6 +175,8 @@ extension CreditCardBillStatusX on CreditCardBillStatus {
         return 'Paga';
       case CreditCardBillStatus.overdue:
         return 'Vencida';
+      case CreditCardBillStatus.future:
+        return 'Futura';
     }
   }
 }

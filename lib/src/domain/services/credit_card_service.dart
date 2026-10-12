@@ -322,6 +322,35 @@ class CreditCardService {
     );
   }
 
+  /// Resumo de todas as faturas de um cartão, com um ajuste: faturas
+  /// futuras já existem no banco antes da hora (criadas antecipadamente
+  /// por compras parceladas), então mais de uma poderia ficar com status
+  /// "aberta" ao mesmo tempo se cada uma fosse avaliada isoladamente. Só a
+  /// que fecha mais perto (a atual) continua "aberta"; as demais, com
+  /// fechamento mais distante, ficam "futura" até a atual fechar.
+  Future<List<CreditCardBillSummary>> billSummariesForCard(int cardId) async {
+    final bills = await getBillsForCard(cardId);
+    final summaries = [for (final bill in bills) await billSummary(bill)];
+
+    final openOnes = summaries.where((s) => s.status == CreditCardBillStatus.open).toList()
+      ..sort((a, b) => a.bill.closingDate.compareTo(b.bill.closingDate));
+    if (openOnes.length <= 1) return summaries;
+
+    final currentBillId = openOnes.first.bill.id;
+    return [
+      for (final s in summaries)
+        if (s.status == CreditCardBillStatus.open && s.bill.id != currentBillId)
+          CreditCardBillSummary(
+            bill: s.bill,
+            totalAmountCents: s.totalAmountCents,
+            paidAmountCents: s.paidAmountCents,
+            status: CreditCardBillStatus.future,
+          )
+        else
+          s,
+    ];
+  }
+
   Future<void> payBill({
     required int billId,
     required int accountId,

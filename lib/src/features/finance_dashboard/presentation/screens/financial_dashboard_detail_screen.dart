@@ -147,7 +147,7 @@ class _MovementsDetail extends ConsumerWidget {
             final m = movements[index - 1];
             return Card(
               child: ListTile(
-                onTap: () => context.push('/financas/extrato/${m.id}'),
+                onTap: () => context.push('/financas-item/movimentacao/${m.id}'),
                 leading: Icon(movementTypeIcon(m.type)),
                 title: Text(
                   m.description?.isNotEmpty == true ? m.description! : movementTypeLabel(m.type),
@@ -278,7 +278,7 @@ class _DuePayableTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        onTap: () => context.push('/financas/contas/pagar/${due.bill.id}'),
+        onTap: () => context.push('/financas-item/conta-pagar/${due.bill.id}'),
         leading: const Icon(Icons.event_note_outlined),
         title: Text(due.bill.description, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text('Vence em ${formatDate(due.bill.dueDate)}'),
@@ -296,7 +296,7 @@ class _DueReceivableTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        onTap: () => context.push('/financas/contas/receber/${due.bill.id}'),
+        onTap: () => context.push('/financas-item/conta-receber/${due.bill.id}'),
         leading: const Icon(Icons.request_quote_outlined),
         title: Text(due.bill.description, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text('Previsto para ${formatDate(due.bill.dueDate)}'),
@@ -315,7 +315,7 @@ class _DueCardBillTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        onTap: () => context.push('/financas/cartoes/${due.cardId}/fatura/${due.bill.id}'),
+        onTap: () => context.push('/financas-item/fatura/${due.cardId}/${due.bill.id}'),
         leading: const Icon(Icons.credit_card_outlined),
         title: Text(due.cardName),
         subtitle: Text('Vence em ${formatDate(due.bill.dueDate)}'),

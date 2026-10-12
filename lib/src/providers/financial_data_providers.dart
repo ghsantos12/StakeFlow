@@ -179,13 +179,7 @@ final forecastProvider = FutureProvider<ForecastSummary>((ref) async {
 
 final creditCardBillsProvider = FutureProvider.family<List<CreditCardBillSummary>, int>((ref, cardId) async {
   ref.watch(dbChangesProvider);
-  final service = ref.watch(creditCardServiceProvider);
-  final bills = await service.getBillsForCard(cardId);
-  final summaries = <CreditCardBillSummary>[];
-  for (final bill in bills) {
-    summaries.add(await service.billSummary(bill));
-  }
-  return summaries;
+  return ref.watch(creditCardServiceProvider).billSummariesForCard(cardId);
 });
 
 class BillInstallmentDetail {
