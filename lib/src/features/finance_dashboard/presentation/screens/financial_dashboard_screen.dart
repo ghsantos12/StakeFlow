@@ -15,19 +15,21 @@ class FinancialDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshotAsync = ref.watch(financialDashboardSnapshotProvider);
     final selectedFilter = ref.watch(billsDateFilterProvider);
+    final bettingEnabled = ref.watch(bettingModuleEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestão Financeira'),
         actions: [
-          IconButton(
-            tooltip: 'Trocar para Apostas',
-            icon: const Icon(Icons.swap_horiz),
-            onPressed: () async {
-              await ref.read(lastModuleProvider.notifier).set('apostas');
-              if (context.mounted) context.go('/');
-            },
-          ),
+          if (bettingEnabled)
+            IconButton(
+              tooltip: 'Trocar para Apostas',
+              icon: const Icon(Icons.swap_horiz),
+              onPressed: () async {
+                await ref.read(lastModuleProvider.notifier).set('apostas');
+                if (context.mounted) context.go('/');
+              },
+            ),
         ],
       ),
       body: RefreshIndicator(

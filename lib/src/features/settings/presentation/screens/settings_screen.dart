@@ -23,12 +23,27 @@ class SettingsScreen extends ConsumerWidget {
     final blockInsufficient = ref.watch(blockInsufficientBalanceProvider);
     final annualCdi = ref.watch(annualCdiRateProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final bettingEnabled = ref.watch(bettingModuleEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
+          _SectionHeader('Módulos'),
+          Card(
+            child: SwitchListTile(
+              title: const Text('Habilitar módulo de apostas'),
+              subtitle: Text(
+                bettingEnabled
+                    ? 'Ícone de alternar entre apostas e finanças disponível.'
+                    : 'Desligado: o app mostra só a gestão financeira.',
+              ),
+              value: bettingEnabled,
+              onChanged: (v) => ref.read(bettingModuleEnabledProvider.notifier).setValue(v),
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionHeader('Contas'),
           Card(
             child: ListTile(

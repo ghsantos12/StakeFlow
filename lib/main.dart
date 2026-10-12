@@ -10,7 +10,12 @@ Future<void> main() async {
 
   final settingsRepository = await SettingsRepository.create();
   final database = AppDatabase();
-  final initialLocation = settingsRepository.lastModule == 'financas' ? '/financas' : '/';
+  // Com o módulo de apostas desabilitado, o app sempre abre no financeiro,
+  // mesmo que o último módulo acessado (antes de desabilitar) tenha sido
+  // o de apostas.
+  final initialLocation = !settingsRepository.bettingModuleEnabled || settingsRepository.lastModule == 'financas'
+      ? '/financas'
+      : '/';
 
   runApp(
     ProviderScope(

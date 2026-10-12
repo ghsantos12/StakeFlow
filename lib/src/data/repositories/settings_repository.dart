@@ -20,6 +20,7 @@ class SettingsRepository {
   static const _kBiometricEnabled = 'biometric_enabled';
   static const _kPinHash = 'pin_hash';
   static const _kLastModule = 'last_module';
+  static const _kBettingModuleEnabled = 'betting_module_enabled';
 
   static Future<SettingsRepository> create() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,6 +91,15 @@ class SettingsRepository {
 
   Future<void> setLastModule(String module) async {
     await _prefs.setString(_kLastModule, module);
+  }
+
+  /// Se falso (padrão), o app mostra só o módulo financeiro — o módulo de
+  /// apostas fica oculto e inacessível, e o app sempre abre direto nas
+  /// finanças, ignorando [lastModule].
+  bool get bettingModuleEnabled => _prefs.getBool(_kBettingModuleEnabled) ?? false;
+
+  Future<void> setBettingModuleEnabled(bool value) async {
+    await _prefs.setBool(_kBettingModuleEnabled, value);
   }
 
   Future<void> clearAll() async {

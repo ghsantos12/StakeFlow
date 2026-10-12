@@ -67,3 +67,18 @@ class LastModuleNotifier extends Notifier<String> {
 /// 'apostas' ou 'financas' — lembrado para abrir direto no último módulo
 /// acessado na próxima vez que o app iniciar.
 final lastModuleProvider = NotifierProvider<LastModuleNotifier, String>(LastModuleNotifier.new);
+
+class BettingModuleEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(settingsRepositoryProvider).bettingModuleEnabled;
+
+  Future<void> setValue(bool value) async {
+    await ref.read(settingsRepositoryProvider).setBettingModuleEnabled(value);
+    state = value;
+  }
+}
+
+/// Se falso (padrão), o módulo de apostas fica oculto — o app mostra só
+/// o módulo financeiro e esconde o ícone de alternar entre os dois.
+final bettingModuleEnabledProvider =
+    NotifierProvider<BettingModuleEnabledNotifier, bool>(BettingModuleEnabledNotifier.new);
